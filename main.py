@@ -30,7 +30,7 @@ if __name__ == "__main__":
     }
      
 	train_agents(config)
-	np.load("result/2023-10-31")
+
 	
 	
 	
