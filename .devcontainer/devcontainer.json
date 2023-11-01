@@ -1,0 +1,8 @@
+{
+    "name": "Python Project",
+    "image": "cf-actionfeature",
+    "extensions": ["ms-python.python"],
+    "runArgs": [
+        "--gpus", "device=2"
+    ]
+}
