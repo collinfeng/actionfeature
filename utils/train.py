@@ -9,7 +9,7 @@ from environments.hintguess import *
 from utils.utils import *
 
 
-def train_agents(config):
+def train_agents(config, cp_suffix):
     '''
     declare static arguments
     '''
@@ -130,7 +130,7 @@ def train_agents(config):
     rngs = jax.random.split(rng, num_agents)
     batch_train = jax.vmap(a2i_train, in_axes=(0,))
     batch_t_state_h, batch_t_state_g, batch_rewards = batch_train(rngs)
-    save_batched_pytree(batch_t_state_h, f"result/{currentDate}/hinter", num_agents)
-    save_batched_pytree(batch_t_state_g, f"result/{currentDate}/guesser", num_agents)
-    save_jax_array(batch_rewards, f"result/{currentDate}", "rewards")
+    save_batched_pytree(batch_t_state_h, f"result/{currentDate}-{cp_suffix}/hinter", num_agents)
+    save_batched_pytree(batch_t_state_g, f"result/{currentDate}-{cp_suffix}/guesser", num_agents)
+    save_jax_array(batch_rewards, f"result/{currentDate}-{cp_suffix}", "rewards")
     

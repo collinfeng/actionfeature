@@ -55,7 +55,7 @@ class A2I(nn.Module):
     def __call__(self, sp, h1, h2):
         def forward_pass(observation, action):
             x = jnp.concatenate((observation, action[:, jnp.newaxis, :]), axis=1)
-            x = self.SA2IAttn(x)
+            x = self.attn(x)
             x = jnp.mean(x, axis=1)
             x = self.fc1(x)
             x = nn.relu(x)
@@ -74,10 +74,10 @@ def model_test():
     model  = A2I(hidden=128,
                  num_heads=1,
                  batch_size=256,
-                 emb_dim=9,
+                 emb_dim=6,
                  N=5,
-                 qkv_features=9,
-                 out_features=9)
+                 qkv_features=6,
+                 out_features=6)
     init_sp = jnp.zeros((256, 6), jnp.float32)
     init_h1 = jnp.zeros((256, 5, 6), jnp.float32)
     init_h2 = jnp.zeros((256, 5, 6), jnp.float32)

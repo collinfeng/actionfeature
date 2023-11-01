@@ -11,6 +11,7 @@ def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=No
         return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
     else:
         params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
+        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
 
 
 def save_pytree(pytree, path):
