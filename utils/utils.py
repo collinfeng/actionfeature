@@ -1,20 +1,23 @@
 import jax
 import jax.numpy as jnp
-from flax.training import train_state
+from flax.training import train_state, checkpoints
 import optax
 import orbax.checkpoint as ocp
 from tempfile import TemporaryFile
 
-def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr):
-    params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
+def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None):
     optim = optax.adam(lr)
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+    if params != None:
+        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+    else:
+        params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
+
 
 def save_pytree(pytree, path):
     checkpointer = ocp.PyTreeCheckpointer()
     checkpointer.save(path, pytree)
 
-def load_pytree(path):
+def load_trainstate(path):
     checkpointer = ocp.PyTreeCheckpointer()
     return checkpointer.restore(path)
 

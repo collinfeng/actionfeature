@@ -6,10 +6,7 @@ from tqdm import tqdm
 
 from models.SA2I import *
 from environments.hintguess import *
-from utils.general import *
-
-
-
+from utils.utils import *
 
 
 def train_agents(config):

@@ -1,13 +1,15 @@
 from utils.train import * 
-from utils.general import *
+from utils.utils import *
+from utils.eval import *
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+
 if __name__ == "__main__":
-	currentDate = datetime.now().strftime("%Y-%m-%d")
-	currentTime = datetime.now().strftime("%H:%M:%S")
-	config = {
+    currentDate = datetime.now().strftime("%Y-%m-%d")
+    currentTime = datetime.now().strftime("%H:%M:%S")
+    config = {
     "debug":True,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
@@ -28,8 +30,10 @@ if __name__ == "__main__":
     "K":50000,
     "logging":True
     }
-     
-	train_agents(config)
+
+    
+
+
 
 	
 	
