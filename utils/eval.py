@@ -25,8 +25,8 @@ def SA2I_Eval(t_state_h, t_state_g, rng, config):
         N = config["N"]
         hg_env = HintGuessEnv(config)
         card_dim = 2 * config["feature_dim"]
-
         conditional_dim = config["feature_dim"]**2
+        
 
 
 def play_eval(t_state_h, t_state_g, rng, config):
@@ -114,7 +114,7 @@ def xp_eval(agents, config):
         for j in range(num_agents):
             rng, subrng = jax.random.split(rng)
             guesser_tx = agents[j][1]
-            _, _, reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
+            reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
             xp_result[i, j] = reward
             print(f"Hinter{i}, Guesser{j}, Reward: {reward}")
 
