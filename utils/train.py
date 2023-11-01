@@ -130,7 +130,7 @@ def train_agents(config, cp_suffix):
     rngs = jax.random.split(rng, num_agents)
     batch_train = jax.vmap(a2i_train, in_axes=(0,))
     batch_t_state_h, batch_t_state_g, batch_rewards = batch_train(rngs)
-    save_batched_pytree(batch_t_state_h, f"result/{currentDate}-{cp_suffix}/hinter", num_agents)
-    save_batched_pytree(batch_t_state_g, f"result/{currentDate}-{cp_suffix}/guesser", num_agents)
-    save_jax_array(batch_rewards, f"result/{currentDate}-{cp_suffix}", "rewards")
+    save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
+    save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
+    save_jax_array(batch_rewards, f"results/{currentDate}-{cp_suffix}", "rewards")
     
