@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import flax
 import flax.linen as nn
 
-from utils.general import create_train_state
+from utils.utils import create_train_state
 
 
 class single_head_SA2IAttn(nn.Module):
@@ -85,5 +85,3 @@ def model_test():
     q_values = t_state.apply_fn({"params": t_state.params}, init_sp, init_h1, init_h2)
     print(q_values.shape)
 
-if __name__ == "__main__":
-    model_test()
