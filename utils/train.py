@@ -80,7 +80,7 @@ def train_agents(config, cp_suffix):
 
         num_of_objects = 2*N + 2
         
-        hinter = A2I(hidden=config["mlp_hidden"],
+        hinter = A2ICoded(hidden=config["mlp_hidden"],
                  num_heads=config["num_heads"],
                  batch_size=config["batch_size"],
                  emb_dim=config["emb_dim"],
@@ -90,7 +90,7 @@ def train_agents(config, cp_suffix):
         
         
         
-        guesser = A2I(hidden=config["mlp_hidden"],
+        guesser = A2ICoded(hidden=config["mlp_hidden"],
                       num_heads=config["num_heads"],
                       batch_size=config["batch_size"],
                       emb_dim=config["emb_dim"],

@@ -6,4 +6,4 @@ docker run --rm --name collin-runtime -v $(pwd):/home/ActionFeature -w /home/Act
 
 docker run --rm --name collin-runtime -v $(pwd):/home/ActionFeature -w /home/ActionFeature -u $(id -u):$(id -g) -it cf-actionfeature python3 main.py
 
-OR Instead execute cmd+P dev container open folder 
+### Use cmd+P dev container reopen in VSC for interactive sessions

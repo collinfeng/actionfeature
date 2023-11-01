@@ -13,14 +13,14 @@ if __name__ == "__main__":
     "debug":True,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
-    "emb_dim":6,
-    "qkv_features":6,
-    "out_features":6,
+    "emb_dim":9,
+    "qkv_features":9,
+    "out_features":9,
     "num_episodes": 800000,
     "mlp_hidden": 128,
     "batch_size": 500,
     "learning_rate": 0.0001,
-    "num_agents": 12,
+    "num_agents": 4,
     "PRNGkey": 0,
     "eval_PRNGkey":12345,
     "num_heads": 1,
@@ -28,9 +28,9 @@ if __name__ == "__main__":
     "eps_min":0.01,
     "eps_max":0.95,
     "K":50000,
-    "logging":True,
+    "logging":True
     }
-    cp_suffix = "SA2I-QKV"
+    cp_suffix = "SA2I-QKV-C"
     train_agents(config, cp_suffix)
 
     
