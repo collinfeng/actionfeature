@@ -5,6 +5,30 @@ import numpy as np
 
 from environments.hintguess import *
 
+def SA2I_Eval(t_state_h, t_state_g, rng, config):
+    def greedy_policy(q_values):
+        return jnp.argmax(q_values)
+
+    def index_convertion(twohot_index):
+        '''
+        input: format of (feature_dim)
+        output: format of (idx), idx <- {0, 8} if feature = 3, 1A -> 0, 3C ->8
+        '''
+        pos = jnp.argwhere(twohot_index==1, size=2)
+        idx = (2 - pos[0])*3 + (2 - (pos[1] - 3))
+        return idx
+
+        greedy_v = jax.vmap(greedy_policy, in_axes=(0))
+        index_convertion_v = jax.vmap(index_convertion)
+
+        batch_size = config["batch_size"]
+        N = config["N"]
+        hg_env = HintGuessEnv(config)
+        card_dim = 2 * config["feature_dim"]
+
+        conditional_dim = config["feature_dim"]**2
+
+
 def play_eval(t_state_h, t_state_g, rng, config):
     def greedy_policy(q_values):
         return jnp.argmax(q_values)
