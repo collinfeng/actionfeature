@@ -23,7 +23,7 @@ def train_agents(config, cp_suffix):
     
     
     @jax.jit
-    def a2i_train(rng):
+    def train_sigle_agent(rng):
         def training_step(carry, x):
             def loss_fn(h_params, g_params, rng, eps):
 
@@ -128,7 +128,7 @@ def train_agents(config, cp_suffix):
 
     rng = jax.random.PRNGKey(config["PRNGkey"])
     rngs = jax.random.split(rng, num_agents)
-    batch_train = jax.vmap(a2i_train, in_axes=(0,))
+    batch_train = jax.vmap(train_sigle_agent, in_axes=(0,))
     batch_t_state_h, batch_t_state_g, batch_rewards = batch_train(rngs)
     save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
     save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
