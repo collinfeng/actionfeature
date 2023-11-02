@@ -13,9 +13,6 @@ from utils.eval import *
 
 def train_agents(config, cp_suffix):
     
-    # @jax.jit
-    # def batched_xp_eval(batch_t_state_h, batch_t_state_g):
-    #     def 
     
     @jax.jit
     def train_sigle_agent(rngs, t_state_h, t_state_g, eps):
@@ -121,12 +118,13 @@ def train_agents(config, cp_suffix):
 
     # batched training setup
     # setup rngs and eps
-    train_rngs = jax.random.split(train_rng, num_episodes * num_agents).reshape(eval_interval, num_agents, -1, 2)
+    num_evals = num_episodes // eval_interval
+    train_rngs = jax.random.split(train_rng, num_episodes * num_agents).reshape(num_evals, num_agents, -1, 2)
     init_rngs = jax.random.split(init_rng, num_agents)
     n = jnp.arange(num_episodes)
     eps = eps_min + (eps_max - eps_min) * jnp.exp(-n/K)
-    eps = eps.reshape(eval_interval, -1)
-    num_evals = num_episodes // eval_interval
+    eps = eps.reshape(num_evals, -1)
+   
 
 
     # init batched train_state
@@ -138,21 +136,18 @@ def train_agents(config, cp_suffix):
     batch_train = jax.vmap(train_sigle_agent, in_axes=(0, 0, 0, None,), out_axes=0)
 
     # logging
-    batch_rewards = []
-    xp_scores = []
+    batch_rewards = np.zeros((num_agents, num_evals, eval_interval))
+    xp_scores = np.zeros(num_evals)
     
     for eval_idx in range(num_evals):
-        batch_interval_train_rngs = train_rngs[eval_idx, :, :]
+        batch_interval_train_rngs = train_rngs[eval_idx, :, :, :]
         interval_eps = eps[eval_idx, :]
         batch_t_state_h, batch_t_state_g, batch_interval_reward = batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
-        hinters = [jax.tree_map(lambda x: x[i], batch_t_state_h) for i in range(num_agents)]
-        guessers = [jax.tree_map(lambda x: x[i], batch_t_state_h) for i in range(num_agents)]
-        agents = [[hinters[i], guessers[i]] for i in range(num_agents)]
-        xp_scores.append(xp_eval(agents, config))
-        batch_rewards.append(batch_interval_reward)
+        batch_rewards[:, eval_idx, :] = batch_interval_reward
+        xp_scores[eval_idx] = batched_xp_eval(batch_t_state_h, batch_t_state_g, config).mean()
 
-    xp_train_scores = jnp.stack(xp_scores)
-    sp_train_scores = jnp.stack(batch_rewards)
+    xp_train_scores = xp_scores.reshape(-1)
+    sp_train_scores = batch_rewards.reshape(num_agents, -1)
     
     # save result
     if config["save_result"] == True:

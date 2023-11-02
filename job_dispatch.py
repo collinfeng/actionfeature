@@ -15,7 +15,7 @@ if __name__ == "__main__":
     "emb_dim":9,
     "qkv_features":9,
     "out_features":9,
-    "num_episodes": 400000,
+    "num_episodes": 800000,
     "mlp_hidden": 128,
     "batch_size": 500,
     "learning_rate": 0.0001,
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     "eps_min":0.01,
     "eps_max":0.95,
     "K":5000,
-    "eval_interval":10000,
+    "eval_interval":800,
     "save_result": True,
     "xpeval_print": False,
     "training":True

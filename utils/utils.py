@@ -4,6 +4,7 @@ from flax.training import train_state, checkpoints
 import optax
 import orbax.checkpoint as ocp
 from tempfile import TemporaryFile
+import numpy as np
 
 def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None):
     optim = optax.adam(lr)
@@ -44,3 +45,7 @@ def eps_policy(config, eps, q_values, rng):
 
     condition = jax.numpy.less_equal(jax.random.uniform(rng), eps)
     return jax.lax.cond(condition, (), rand_action, (), greedy)
+
+
+
+ 

@@ -4,43 +4,7 @@ from tqdm import tqdm
 import numpy as np
 
 from environments.hintguess import *
-
-def train_time_Eval(t_state_h, t_state_g, eval_rng, config):
-    def greedy_policy(q_values):
-        return jnp.argmax(q_values)
-    
-    @jax.jit
-    def eval_step(carry, rng):
-        t_state_h, t_state_g = carry
-        rng, subrng = jax.random.split(rng)
-        tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
-
-        q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
-
-        rng, subrng = jax.random.split(rng)
-        rngs = jax.random.split(subrng, batch_size)
-        h_actions = greedy_v(q_values_h)
-        hinted_twohot = jnp.take_along_axis(H1_twohot, h_actions[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
-        q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot)
-
-        rng, subrng = jax.random.split(rngs[-1])
-        rngs = jax.random.split(subrng, batch_size)
-        guess = greedy_v(q_values_g)
-        guess_twohot = jnp.take_along_axis(H2_twohot, guess[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
-        rewards = hg_env.get_reward(tgt_twohot, guess_twohot)
-
-        return (t_state_h, t_state_g), rewards
-
-
-    greedy_v = jax.vmap(greedy_policy, in_axes=(0))
-    batch_size = config["batch_size"]
-    N = config["N"]
-    hg_env = HintGuessEnv(config)
-    rngs = jax.random.split(eval_rng, config["eval_runs"])
-    _, rewards = jax.lax.scan(eval_step, (t_state_h, t_state_g), rngs)
-    return jnp.mean(rewards), None
-    
-        
+from utils.utils import *
 
 
 def play_eval(t_state_h, t_state_g, rng, config):
@@ -128,9 +92,68 @@ def xp_eval(agents, config):
         for j in range(num_agents):
             rng, subrng = jax.random.split(rng)
             guesser_tx = agents[j][1]
-            reward, _ = train_time_Eval(hinter_tx, guesser_tx, subrng, config)
+            reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
             xp_result[i, j] = reward
             if config["xpeval_print"] == True:
                 print(f"Hinter{i}, Guesser{j}, Reward: {reward}")
 
     return xp_result
+
+def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
+    @jax.jit
+    def single_pair_eval(t_state_h, t_state_g):
+        def greedy_policy(q_values):
+            return jnp.argmax(q_values)
+
+        def eval_step(carry, rng):
+            t_state_h, t_state_g = carry
+            rng, subrng = jax.random.split(rng)
+            tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
+
+            q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
+
+            rng, subrng = jax.random.split(rng)
+            rngs = jax.random.split(subrng, batch_size)
+            h_actions = greedy_v(q_values_h)
+            hinted_twohot = jnp.take_along_axis(H1_twohot, h_actions[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+            q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot)
+
+            rng, subrng = jax.random.split(rngs[-1])
+            rngs = jax.random.split(subrng, batch_size)
+            guess = greedy_v(q_values_g)
+            guess_twohot = jnp.take_along_axis(H2_twohot, guess[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+            rewards = hg_env.get_reward(tgt_twohot, guess_twohot)
+
+            return (t_state_h, t_state_g), rewards
+
+
+        greedy_v = jax.vmap(greedy_policy, in_axes=(0))
+        batch_size = config["batch_size"]
+        hg_env = HintGuessEnv(config)
+        eval_rng = jax.random.PRNGKey(config["eval_rng"])
+        rngs = jax.random.split(eval_rng, config["eval_runs"])
+        _, rewards = jax.lax.scan(eval_step, (t_state_h, t_state_g), rngs)
+        return rewards.mean()
+    
+    @jax.jit
+    def tree_node_xp_op(batch_t_state_h, batch_t_state_g):
+        def process_tree(x):
+            dim = x.ndim
+            shape = np.array(x.shape)
+            shape[0] = shape[0] * config["num_agents"]
+            axes = np.arange(dim - 1) + 1
+            axes = np.concatenate((np.arange(x.ndim) + 1, [0]), axis=-1)
+            x = jnp.repeat(x[jnp.newaxis, ...], config["num_agents"], axis=0)
+            x = jnp.transpose(x, axes=axes)
+            x = x.reshape(shape)
+            return x
+        def repeat(x):
+            return jnp.repeat(x, config["num_agents"], axis=0)
+        batch_t_state_h = jax.tree_map(process_tree, batch_t_state_h)
+        batch_t_state_g = jax.tree_map(repeat, batch_t_state_g)
+        return batch_t_state_h, batch_t_state_g
+    
+    batch_t_state_h, batch_t_state_g = tree_node_xp_op(batch_t_state_h, batch_t_state_g)
+    vmap_xp_eval = jax.vmap(single_pair_eval)
+    xp_scores = vmap_xp_eval(batch_t_state_h, batch_t_state_g)
+    return xp_scores.mean()
