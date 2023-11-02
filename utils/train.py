@@ -7,23 +7,12 @@ from tqdm import tqdm
 from models.SA2I import *
 from environments.hintguess import *
 from utils.utils import *
+from utils.eval import *
 
 
 def train_agents(config, cp_suffix):
-    '''
-    declare static arguments
-    '''
-    num_agents = config["num_agents"]
-    batch_size = config["batch_size"]
-    num_episodes = config["num_episodes"]
-    N = config["N"]
-
-    static_args = (num_agents, batch_size, num_episodes, N)
-    currentDate = datetime.now().strftime("%Y-%m-%d")
-    
-    
     @jax.jit
-    def train_sigle_agent(rng):
+    def train_sigle_agent(rngs, t_state_h, t_state_g, eps):
         def training_step(carry, x):
             def loss_fn(h_params, g_params, rng, eps):
 
@@ -68,19 +57,47 @@ def train_agents(config, cp_suffix):
             grad_h_loss_fn = jax.grad(h_loss_fn)
             grad_h = grad_h_loss_fn(t_state_h.params, rng, eps)
             t_state_h = t_state_h.apply_gradients(grads = grad_h)
-
             grad_g_loss_fn = jax.grad(g_loss_fn)
             grad_g = grad_g_loss_fn(t_state_g.params, rng, eps)
             t_state_g = t_state_g.apply_gradients(grads = grad_g)
             rewards = calc_rewards(rng, eps)
-
-            # jax.debug.print("🤯 {x} 🤯", x=rewards.mean())
-
             return (t_state_h, t_state_g), rewards
-
-        num_of_objects = 2*N + 2
         
-        hinter = A2ICoded(hidden=config["mlp_hidden"],
+        (t_state_h, t_state_g), rewards = jax.lax.scan(training_step, (t_state_h, t_state_g), (rngs, eps))
+
+        return t_state_h, t_state_g, rewards
+
+    @jax.jit
+    def init_train_states(init_rng):
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
+        return t_state_h, t_state_g
+
+
+    '''
+    Current function: train_agents(config, cp_suffix):
+    Declare static variables
+    '''
+    num_agents = config["num_agents"]
+    batch_size = config["batch_size"]
+    num_episodes = config["num_episodes"]
+    N = config["N"]
+    hg_env = HintGuessEnv(config)
+
+    currentDate = datetime.now().strftime("%Y-%m-%d")
+    init_sp = jnp.zeros((config["batch_size"], 2 * config["feature_dim"]), jnp.float32)
+    init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
+    init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
+    train_rng = jax.random.PRNGKey(config["train_rng"])
+    init_rng = jax.random.PRNGKey(config["init_rng"])
+    
+    eps_v = jax.vmap(eps_policy, in_axes=(None, None, 0, 0))
+    eps_min = config["eps_min"]
+    eps_max = config["eps_max"]
+    K = config["K"]
+    eval_interval = config["eval_interval"]
+
+    hinter = A2ICoded(hidden=config["mlp_hidden"],
                  num_heads=config["num_heads"],
                  batch_size=config["batch_size"],
                  emb_dim=config["emb_dim"],
@@ -88,49 +105,53 @@ def train_agents(config, cp_suffix):
                  qkv_features=config["qkv_features"],
                  out_features=config["out_features"])
         
-        
-        
-        guesser = A2ICoded(hidden=config["mlp_hidden"],
-                      num_heads=config["num_heads"],
-                      batch_size=config["batch_size"],
-                      emb_dim=config["emb_dim"],
-                      N=config["N"],
-                      qkv_features=config["qkv_features"],
-                      out_features=config["out_features"])
-        
-        
-        init_sp = jnp.zeros((config["batch_size"], 2 * config["feature_dim"]), jnp.float32)
-        init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
-        init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
-        init_rng = rng
-        # init_rng = jax.random.PRNGKey(12345)
-        hg_env = HintGuessEnv(config)
-        eps_v = jax.vmap(eps_policy, in_axes=(None, None, 0, 0))
-        eps_min = config["eps_min"]
-        eps_max = config["eps_max"]
-        K = config["K"]
+    guesser = A2ICoded(hidden=config["mlp_hidden"],
+                    num_heads=config["num_heads"],
+                    batch_size=config["batch_size"],
+                    emb_dim=config["emb_dim"],
+                    N=config["N"],
+                    qkv_features=config["qkv_features"],
+                    out_features=config["out_features"])
 
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
-        rngs = jax.random.split(rng, num_episodes)
-        n = jnp.arange(num_episodes)
-        eps = eps_min + (eps_max - eps_min) * jnp.exp(-n/K)
-        # jax.debug.print("🤯 {x} 🤯", x=eps)
+    # batched training setup
+    # setup rngs and eps
+    train_rngs = jax.random.split(train_rng, num_episodes * num_agents).reshape(eval_interval, num_agents, -1, 2)
+    init_rngs = jax.random.split(init_rng, num_agents)
+    n = jnp.arange(num_episodes)
+    eps = eps_min + (eps_max - eps_min) * jnp.exp(-n/K)
+    eps = eps.reshape(eval_interval, -1)
+    num_evals = num_episodes // eval_interval
 
 
-        (t_state_h, t_state_g), rewards = jax.lax.scan(training_step, (t_state_h, t_state_g), (rngs, eps))
-
-        info = rewards
-        return t_state_h, t_state_g, info
-
-    num_agents, batch_size, num_episodes, N = static_args
+    # init batched train_state
+    batch_init = jax.vmap(init_train_states, in_axes=(0,))
+    batch_t_state_h, batch_t_state_g = batch_init(init_rngs) 
 
 
-    rng = jax.random.PRNGKey(config["PRNGkey"])
-    rngs = jax.random.split(rng, num_agents)
-    batch_train = jax.vmap(train_sigle_agent, in_axes=(0,))
-    batch_t_state_h, batch_t_state_g, batch_rewards = batch_train(rngs)
-    save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
-    save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
-    save_jax_array(batch_rewards, f"results/{currentDate}-{cp_suffix}", "rewards")
+    # batched_train
+    batch_train = jax.vmap(train_sigle_agent, in_axes=(0, 0, 0, None,), out_axes=0)
+
+    # logging
+    batch_rewards = []
+    xp_scores = []
+    
+    for eval_idx in range(num_evals):
+        batch_interval_train_rngs = train_rngs[eval_idx, :, :]
+        interval_eps = eps[eval_idx, :]
+        batch_t_state_h, batch_t_state_g, batch_interval_reward = batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
+        hinters = [jax.tree_map(lambda x: x[i], batch_t_state_h) for i in range(num_agents)]
+        guessers = [jax.tree_map(lambda x: x[i], batch_t_state_h) for i in range(num_agents)]
+        agents = [[hinters[i], guessers[i]] for i in range(num_agents)]
+        xp_scores.append(xp_eval(agents, config))
+        batch_rewards.append(batch_interval_reward)
+
+    xp_train_scores = jnp.stack(xp_scores)
+    sp_train_scores = jnp.stack(batch_rewards)
+    
+    # save result
+    if config["save_result"] == True:
+        save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
+        save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
+        save_jax_array(sp_train_scores, f"results/{currentDate}-{cp_suffix}", "sp_train_scores")
+        save_jax_array(xp_train_scores, f"results/{currentDate}-{cp_suffix}", "xp_train_scores")
     
