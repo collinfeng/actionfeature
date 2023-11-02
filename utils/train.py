@@ -12,8 +12,6 @@ from utils.eval import *
 
 
 def train_agents(config, cp_suffix):
-    
-    
     @jax.jit
     def train_sigle_agent(rngs, t_state_h, t_state_g, eps):
         def training_step(carry, x):

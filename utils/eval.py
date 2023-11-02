@@ -105,8 +105,7 @@ def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
         def greedy_policy(q_values):
             return jnp.argmax(q_values)
 
-        def eval_step(carry, rng):
-            t_state_h, t_state_g = carry
+        def eval_step(t_state_h, t_state_g, rng):
             rng, subrng = jax.random.split(rng)
             tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
 
@@ -124,15 +123,15 @@ def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
             guess_twohot = jnp.take_along_axis(H2_twohot, guess[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
             rewards = hg_env.get_reward(tgt_twohot, guess_twohot)
 
-            return (t_state_h, t_state_g), rewards
-
+            return rewards
 
         greedy_v = jax.vmap(greedy_policy, in_axes=(0))
+        eval_step_v = jax.vmap(eval_step, in_axes=(None, None, 0))
         batch_size = config["batch_size"]
         hg_env = HintGuessEnv(config)
         eval_rng = jax.random.PRNGKey(config["eval_rng"])
-        rngs = jax.random.split(eval_rng, config["eval_runs"])
-        _, rewards = jax.lax.scan(eval_step, (t_state_h, t_state_g), rngs)
+        eval_rng = jax.random.split(eval_rng, config["batched_eval_runs"])
+        rewards = eval_step_v(t_state_h, t_state_g, eval_rng)
         return rewards.mean()
     
     @jax.jit
