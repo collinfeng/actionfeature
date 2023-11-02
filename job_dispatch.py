@@ -28,14 +28,14 @@ if __name__ == "__main__":
     "eps_min":0.01,
     "eps_max":0.95,
     "K":5000,
-    "eval_interval":2000,
+    "eval_interval":10000,
     "save_result": True,
     "xpeval_print": False,
     "training":True
     }
 
 
-    cp_suffix = "SA2I-1MLP"
+    cp_suffix = "SA2I-2MLP"
     train_agents(config, cp_suffix)
 
     

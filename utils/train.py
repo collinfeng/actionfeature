@@ -12,6 +12,11 @@ from utils.eval import *
 
 
 def train_agents(config, cp_suffix):
+    
+    # @jax.jit
+    # def batched_xp_eval(batch_t_state_h, batch_t_state_g):
+    #     def 
+    
     @jax.jit
     def train_sigle_agent(rngs, t_state_h, t_state_g, eps):
         def training_step(carry, x):
