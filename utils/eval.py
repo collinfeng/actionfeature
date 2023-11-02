@@ -5,27 +5,41 @@ import numpy as np
 
 from environments.hintguess import *
 
-def SA2I_Eval(t_state_h, t_state_g, rng, config):
+def train_time_Eval(t_state_h, t_state_g, eval_rng, config):
     def greedy_policy(q_values):
         return jnp.argmax(q_values)
+    
+    @jax.jit
+    def eval_step(carry, rng):
+        t_state_h, t_state_g = carry
+        rng, subrng = jax.random.split(rng)
+        tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
 
-    def index_convertion(twohot_index):
-        '''
-        input: format of (feature_dim)
-        output: format of (idx), idx <- {0, 8} if feature = 3, 1A -> 0, 3C ->8
-        '''
-        pos = jnp.argwhere(twohot_index==1, size=2)
-        idx = (2 - pos[0])*3 + (2 - (pos[1] - 3))
-        return idx
+        q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
 
-        greedy_v = jax.vmap(greedy_policy, in_axes=(0))
-        index_convertion_v = jax.vmap(index_convertion)
+        rng, subrng = jax.random.split(rng)
+        rngs = jax.random.split(subrng, batch_size)
+        h_actions = greedy_v(q_values_h)
+        hinted_twohot = jnp.take_along_axis(H1_twohot, h_actions[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+        q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot)
 
-        batch_size = config["batch_size"]
-        N = config["N"]
-        hg_env = HintGuessEnv(config)
-        card_dim = 2 * config["feature_dim"]
-        conditional_dim = config["feature_dim"]**2
+        rng, subrng = jax.random.split(rngs[-1])
+        rngs = jax.random.split(subrng, batch_size)
+        guess = greedy_v(q_values_g)
+        guess_twohot = jnp.take_along_axis(H2_twohot, guess[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+        rewards = hg_env.get_reward(tgt_twohot, guess_twohot)
+
+        return (t_state_h, t_state_g), rewards
+
+
+    greedy_v = jax.vmap(greedy_policy, in_axes=(0))
+    batch_size = config["batch_size"]
+    N = config["N"]
+    hg_env = HintGuessEnv(config)
+    rngs = jax.random.split(eval_rng, config["eval_runs"])
+    _, rewards = jax.lax.scan(eval_step, (t_state_h, t_state_g), rngs)
+    return jnp.mean(rewards), None
+    
         
 
 
@@ -108,14 +122,15 @@ def play_eval(t_state_h, t_state_g, rng, config):
 def xp_eval(agents, config):
     num_agents = config["num_agents"]
     xp_result = np.zeros((num_agents, num_agents))
-    rng = jax.random.PRNGKey(config["eval_PRNGkey"])
+    rng = jax.random.PRNGKey(config["eval_rng"])
     for i in range(num_agents):
         hinter_tx = agents[i][0]
         for j in range(num_agents):
             rng, subrng = jax.random.split(rng)
             guesser_tx = agents[j][1]
-            reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
+            reward, _ = train_time_Eval(hinter_tx, guesser_tx, subrng, config)
             xp_result[i, j] = reward
-            print(f"Hinter{i}, Guesser{j}, Reward: {reward}")
+            if config["xpeval_print"] == True:
+                print(f"Hinter{i}, Guesser{j}, Reward: {reward}")
 
     return xp_result

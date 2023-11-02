@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 from datetime import datetime
 from tqdm import tqdm
+import os
 
 from models.SA2I import *
 from environments.hintguess import *
@@ -152,6 +153,8 @@ def train_agents(config, cp_suffix):
     if config["save_result"] == True:
         save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
         save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
+        if not os.path.isdir("results/{currentDate}-{cp_suffix}"):
+            os.mkdir(f"results/{currentDate}-{cp_suffix}")
         save_jax_array(sp_train_scores, f"results/{currentDate}-{cp_suffix}", "sp_train_scores")
         save_jax_array(xp_train_scores, f"results/{currentDate}-{cp_suffix}", "xp_train_scores")
     
