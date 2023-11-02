@@ -34,17 +34,8 @@ def save_jax_array(ndarray, path="result", filename="untitled.npy"):
     with open(f"{path}/{filename}", 'wb') as f:
         jnp.save(f, ndarray)
 
-@jax.jit
-def eps_policy(config, eps, q_values, rng):
 
-    def rand_action(dummy):
-        return jax.random.randint(rng, (), 0, config["N"])
 
-    def greedy(dummy):
-        return jnp.argmax(q_values)
-
-    condition = jax.numpy.less_equal(jax.random.uniform(rng), eps)
-    return jax.lax.cond(condition, (), rand_action, (), greedy)
 
 
 

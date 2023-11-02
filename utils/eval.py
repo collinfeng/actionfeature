@@ -100,7 +100,7 @@ def xp_eval(agents, config):
     return xp_result
 
 def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
-    @jax.jit
+    # jitted later after vmapped
     def single_pair_eval(t_state_h, t_state_g):
         def greedy_policy(q_values):
             return jnp.argmax(q_values)
@@ -153,6 +153,6 @@ def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
         return batch_t_state_h, batch_t_state_g
     
     batch_t_state_h, batch_t_state_g = tree_node_xp_op(batch_t_state_h, batch_t_state_g)
-    vmap_xp_eval = jax.vmap(single_pair_eval)
+    vmap_xp_eval = jax.jit(jax.vmap(single_pair_eval))
     xp_scores = vmap_xp_eval(batch_t_state_h, batch_t_state_g)
     return xp_scores.mean()

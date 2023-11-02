@@ -12,8 +12,17 @@ from utils.eval import *
 
 
 def train_agents(config, cp_suffix):
-    @jax.jit
+    # jitted later jitted later after vmapped
     def train_sigle_agent(rngs, t_state_h, t_state_g, eps):
+        
+        def eps_policy(config, eps, q_values, rng):
+                def rand_action(dummy):
+                    return jax.random.randint(rng, (), 0, config["N"])
+                def greedy(dummy):
+                    return jnp.argmax(q_values)
+                condition = jax.numpy.less_equal(jax.random.uniform(rng), eps)
+                return jax.lax.cond(condition, (), rand_action, (), greedy)
+        
         def training_step(carry, x):
             def loss_fn(h_params, g_params, rng, eps):
 
@@ -52,7 +61,7 @@ def train_agents(config, cp_suffix):
             def calc_rewards(rng, eps):
                 _, _, rewards = loss_fn(t_state_h.params, t_state_g.params, rng, eps)
                 return rewards
-
+            
             rng, eps = x
             t_state_h, t_state_g = carry
             grad_h_loss_fn = jax.grad(h_loss_fn)
@@ -64,11 +73,12 @@ def train_agents(config, cp_suffix):
             rewards = calc_rewards(rng, eps)
             return (t_state_h, t_state_g), rewards
         
+        eps_v = jax.vmap(eps_policy, in_axes=(None, None, 0, 0))
         (t_state_h, t_state_g), rewards = jax.lax.scan(training_step, (t_state_h, t_state_g), (rngs, eps))
 
         return t_state_h, t_state_g, rewards
 
-    @jax.jit
+    # jitted later jitted later after vmapped
     def init_train_states(init_rng):
         t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
         t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"])
@@ -92,7 +102,7 @@ def train_agents(config, cp_suffix):
     train_rng = jax.random.PRNGKey(config["train_rng"])
     init_rng = jax.random.PRNGKey(config["init_rng"])
     
-    eps_v = jax.vmap(eps_policy, in_axes=(None, None, 0, 0))
+    
     eps_min = config["eps_min"]
     eps_max = config["eps_max"]
     K = config["K"]
@@ -126,12 +136,13 @@ def train_agents(config, cp_suffix):
 
 
     # init batched train_state
-    batch_init = jax.vmap(init_train_states, in_axes=(0,))
+    batch_init = jax.jit(jax.vmap(init_train_states, in_axes=(0,)))
     batch_t_state_h, batch_t_state_g = batch_init(init_rngs) 
 
 
     # batched_train
     batch_train = jax.vmap(train_sigle_agent, in_axes=(0, 0, 0, None,), out_axes=0)
+    jitted_batch_train = jax.jit(batch_train)
 
     # logging
     batch_rewards = np.zeros((num_agents, num_evals, eval_interval))
@@ -140,7 +151,7 @@ def train_agents(config, cp_suffix):
     for eval_idx in range(num_evals):
         batch_interval_train_rngs = train_rngs[eval_idx, :, :, :]
         interval_eps = eps[eval_idx, :]
-        batch_t_state_h, batch_t_state_g, batch_interval_reward = batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
+        batch_t_state_h, batch_t_state_g, batch_interval_reward = jitted_batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
         batch_rewards[:, eval_idx, :] = batch_interval_reward
         xp_scores[eval_idx] = batched_xp_eval(batch_t_state_h, batch_t_state_g, config).mean()
 
