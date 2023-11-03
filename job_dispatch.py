@@ -36,7 +36,7 @@ if __name__ == "__main__":
     }
 
 
-    cp_suffix = "SA2I-2MLP"
+    cp_suffix = "SA2I-3MLP"
     train_agents(config, cp_suffix)
 
     

@@ -103,8 +103,8 @@ class A2ICoded(nn.Module):
             x = jnp.mean(x, axis=1)
             x = self.fc1(x)
             x = nn.relu(x)
-            # x = self.fc2(x)
-            # x = nn.relu(x)
+            x = self.fc2(x)
+            x = nn.relu(x)
             x = self.fc3(x)
             
             return x

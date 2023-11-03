@@ -133,12 +133,9 @@ def train_agents(config, cp_suffix):
     eps = eps_min + (eps_max - eps_min) * jnp.exp(-n/K)
     eps = eps.reshape(num_evals, -1)
    
-
-
     # init batched train_state
     batch_init = jax.jit(jax.vmap(init_train_states, in_axes=(0,)))
     batch_t_state_h, batch_t_state_g = batch_init(init_rngs) 
-
 
     # batched_train
     batch_train = jax.vmap(train_sigle_agent, in_axes=(0, 0, 0, None,), out_axes=0)

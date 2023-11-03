@@ -1,7 +1,10 @@
 {
     "name": "Python Project",
     "image": "cf-actionfeature",
-    "extensions": ["ms-python.python"],
+    "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+    ],
     "runArgs": [
         "--gpus", "device=2"
     ]
