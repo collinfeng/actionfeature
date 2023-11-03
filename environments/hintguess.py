@@ -19,7 +19,6 @@ class HintGuessEnv(object):
             cardmappings.append(jnp.concatenate((f1, f2), axis=-1))
         return jnp.stack(cardmappings)
 
-
     @partial(jax.jit, static_argnums=(0,))
     def get_observation(self, rng):
         '''
@@ -32,9 +31,26 @@ class HintGuessEnv(object):
         H1_twohot = jax.nn.one_hot(H[:, :, :2], self.feature_dim).reshape(self.batch_size, self.N, self.feature_dim*2)
         H2_twohot = jax.nn.one_hot(H[:, :, 2:], self.feature_dim).reshape(self.batch_size, self.N, self.feature_dim*2)
         return (tgt_twohot, H1_twohot, H2_twohot)
+    
+    @partial(jax.jit, static_argnums=(0,))
+    def get_observation_test(self, rng):
+        '''
+        hand dim: batch, hand, feature
+        '''
+        _, rng, H_rng, tgt_rng = jax.random.split(rng, 4)
+        tgt_idx = jax.random.randint(key = tgt_rng, shape=(self.batch_size,), minval=0, maxval=self.N)
+        H = jax.random.randint(key=H_rng, shape=(self.batch_size, self.N, 4), minval=0, maxval=self.feature_dim)
+        tgt_twohot = jax.nn.one_hot(H[jnp.arange(self.batch_size), tgt_idx, 2:], self.feature_dim).reshape(self.batch_size, self.feature_dim*2)
+        tgt_twohot = tgt_twohot + jnp.array([1, 1, 1, 2, 2, 2])
+        H1_twohot = jax.nn.one_hot(H[:, :, :2], self.feature_dim).reshape(self.batch_size, self.N, self.feature_dim*2)
+        H1_twohot = H1_twohot + jnp.array([1, 1, 1, 2, 2, 2])
+        H2_twohot = jax.nn.one_hot(H[:, :, 2:], self.feature_dim).reshape(self.batch_size, self.N, self.feature_dim*2)
+        H2_twohot = H2_twohot + jnp.array([1, 1, 1, 2, 2, 2])
+        return (tgt_twohot, H1_twohot, H2_twohot)
+    
 
     @partial(jax.jit, static_argnums=(0,))
-    def init_game(self, rng):
+    def get_non_repeated_obs(self, rng):
         '''
         The get_observation function with non-repeating hand
         Restricted Handsize < Max possible card choices

@@ -37,7 +37,7 @@ def play_eval(t_state_h, t_state_g, rng, config):
 
     for eval_run in tqdm(range(config["eval_runs"])):
         rng, subrng = jax.random.split(rng)
-        tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
+        tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation_test(subrng)
 
         q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
 
@@ -107,7 +107,7 @@ def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
 
         def eval_step(t_state_h, t_state_g, rng):
             rng, subrng = jax.random.split(rng)
-            tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
+            tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation_test(subrng)
 
             q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
 
