@@ -94,7 +94,7 @@ def train_agents(config, cp_suffix):
     num_episodes = config["num_episodes"]
     N = config["N"]
     hg_env = HintGuessEnv(config)
-
+    model = config["model"]
     currentDate = datetime.now().strftime("%Y-%m-%d")
     init_sp = jnp.zeros((config["batch_size"], 2 * config["feature_dim"]), jnp.float32)
     init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
@@ -108,7 +108,7 @@ def train_agents(config, cp_suffix):
     K = config["K"]
     eval_interval = config["eval_interval"]
 
-    hinter = A2ICoded(hidden=config["mlp_hidden"],
+    hinter = model(hidden=config["mlp_hidden"],
                  num_heads=config["num_heads"],
                  batch_size=config["batch_size"],
                  emb_dim=config["emb_dim"],
@@ -116,7 +116,7 @@ def train_agents(config, cp_suffix):
                  qkv_features=config["qkv_features"],
                  out_features=config["out_features"])
         
-    guesser = A2ICoded(hidden=config["mlp_hidden"],
+    guesser = model(hidden=config["mlp_hidden"],
                     num_heads=config["num_heads"],
                     batch_size=config["batch_size"],
                     emb_dim=config["emb_dim"],
@@ -160,7 +160,7 @@ def train_agents(config, cp_suffix):
         save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{cp_suffix}/hinter", num_agents)
         save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{cp_suffix}/guesser", num_agents)
         if not os.path.isdir("results/{currentDate}/{cp_suffix}"):
-            os.mkdir(f"results/{currentDate}/{cp_suffix}")
+            os.makedirs(f"results/{currentDate}/{cp_suffix}")
         save_jax_array(sp_train_scores, f"results/{currentDate}/{cp_suffix}", "sp_train_scores")
         save_jax_array(xp_train_scores, f"results/{currentDate}/{cp_suffix}", "xp_train_scores")
     

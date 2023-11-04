@@ -10,12 +10,12 @@ if __name__ == "__main__":
     currentDate = datetime.now().strftime("%Y-%m-%d")
     currentTime = datetime.now().strftime("%H:%M:%S")
     config = {
-    "model":A2ICoded,
+	"model": SA2I4C,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
-    "emb_dim":9,
-    "qkv_features":9,
-    "out_features":9,
+    "emb_dim":10,
+    "qkv_features":10,
+    "out_features":10,
     "num_episodes": 1000000,
     "mlp_hidden": 128,
     "batch_size": 500,
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     }
 
 
-    cp_suffix = "SA2I-3MLP-Q"
+    cp_suffix = "SA2I-3MLP-Q4C"
     train_agents(config, cp_suffix)
     # model_test()
     
