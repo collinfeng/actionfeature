@@ -10,19 +10,24 @@ from utils.utils import create_train_state
 class single_head_SA2IAttn(nn.Module):
     qkv_features: int
     batch_size: int
+    seq_len: int
 
     def setup(self):
-        self.W = nn.Dense(self.qkv_features)
+        self.Q = nn.Dense(self.qkv_features)
+        # self.K = nn.Dense(self.qkv_features)
+        # self.V = nn.Dense(self.qkv_features)
 
-    def mult_dot(self, x):
-        similarities = jnp.einsum("ijk, isk->ijs", x, x)
-        attention_prob = nn.softmax(similarities, axis=-1)/jnp.sqrt(self.qkv_features)
-        attention_out = jnp.einsum("ijk, iks->ijs", attention_prob, x)
+    def mult_dot(self, q, k, v):
+        similarities = jnp.einsum("bif, bjf->bij", q, k)
+        attention_prob = nn.softmax(similarities/jnp.sqrt(self.seq_len), axis=-1)
+        attention_out = jnp.einsum("bij, bjf->bif", attention_prob, v)
         return attention_out
 
     def __call__(self, x):
-        x = self.W(x.reshape(-1, self.qkv_features)).reshape(self.batch_size, -1, self.qkv_features)
-        attention = self.mult_dot(x)
+        q = self.Q(x.reshape(-1, self.qkv_features)).reshape(self.batch_size, -1, self.qkv_features)
+        # k = self.K(x.reshape(-1, self.qkv_features)).reshape(self.batch_size, -1, self.qkv_features)
+        # v = self.V(x.reshape(-1, self.qkv_features)).reshape(self.batch_size, -1, self.qkv_features)
+        attention = self.mult_dot(q, q, q)
         return attention
 
 
@@ -120,17 +125,17 @@ class SA2I(nn.Module):
         self.fc1 = nn.Dense(self.hidden)
         self.fc2 = nn.Dense(self.hidden)
         self.fc3 = nn.Dense(1)
-        self.SA2IAttn = single_head_SA2IAttn(qkv_features=self.qkv_features, batch_size=self.batch_size)
+        self.SA2IAttn = single_head_SA2IAttn(qkv_features=self.qkv_features, batch_size=self.batch_size, seq_len=(2 * self.N + 2))
 
     def observation_shaping(self, sp, h1, h2):
-        sp = jnp.concatenate((jnp.zeros((self.batch_size, 1)), sp), axis=-1)
-        h1 = jnp.concatenate((jnp.zeros((self.batch_size, self.N, 1)), h1), axis=-1)
-        h2 = jnp.concatenate((jnp.zeros((self.batch_size, self.N, 1)), h2), axis=-1)
+        sp = jnp.concatenate((jnp.repeat(jnp.array([1, 0, 0]), self.batch_size).reshape(self.batch_size, 3), sp), axis=-1)
+        h1 = jnp.concatenate((jnp.repeat(jnp.array([0, 1, 0]), self.batch_size * self.N).reshape(self.batch_size, self.N, 3), h1), axis=-1)
+        h2 = jnp.concatenate((jnp.repeat(jnp.array([0, 1, 0]), self.batch_size * self.N).reshape(self.batch_size, self.N, 3), h2), axis=-1)
         result = jnp.concatenate((sp[:, jnp.newaxis, :], h1, h2), axis=1)
         return result
 
     def actions_shaping(self, h2):
-        return jnp.concatenate((jnp.ones((self.batch_size, self.N, 1)), h2), axis=-1)
+        return jnp.concatenate((jnp.repeat(jnp.array([0, 0, 1]), self.batch_size * self.N).reshape(self.batch_size, self.N, 3), h2), axis=-1)
 
     def __call__(self, sp, h1, h2):
         def forward_pass(observation, action):
@@ -151,15 +156,14 @@ class SA2I(nn.Module):
         return q_values.reshape(self.batch_size, -1)
     
 
-
 def model_test():
     model  = SA2I(hidden=128,
                  num_heads=1,
                  batch_size=500,
-                 emb_dim=7,
+                 emb_dim=9,
                  N=5,
-                 qkv_features=7,
-                 out_features=7)
+                 qkv_features=9,
+                 out_features=9)
     init_sp = jnp.zeros((500, 6), jnp.float32)
     init_h1 = jnp.zeros((500, 5, 6), jnp.float32)
     init_h2 = jnp.zeros((500, 5, 6), jnp.float32)

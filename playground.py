@@ -8,7 +8,7 @@ from flax.training import train_state, checkpoints
 from models.SA2I import *
 from environments.hintguess import *
 from utils.utils import *
-from utils.eval import *
+from utils.evaluations import *
 
 import matplotlib.pyplot as plt
 

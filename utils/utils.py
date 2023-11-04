@@ -7,7 +7,7 @@ from tempfile import TemporaryFile
 import numpy as np
 import matplotlib.pyplot as plt
 from models.SA2I import *
-from utils.eval import *
+from utils.evaluations import *
 
 
 def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None):
@@ -34,7 +34,7 @@ def save_batched_pytree(batched_pytree, path, n):
         py_tree = jax.tree_map(lambda x: index_array(i, x), batched_pytree)
         save_pytree(py_tree, path + f"_{i}")
 
-def save_jax_array(ndarray, path="result", filename="untitled.npy"):
+def save_jax_array(ndarray, path="results", filename="untitled.npy"):
     with open(f"{path}/{filename}", 'wb') as f:
         jnp.save(f, ndarray)
 
@@ -93,8 +93,8 @@ def plot_cond_prob(suffix, config, save=False):
 
         t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"])
         t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"] )
-
-        _, conditional_prob = play_eval(t_state_h, t_state_g, init_rng, config)
+        
+        rewards, conditional_prob = play_eval(t_state_h, t_state_g, init_rng, config)
         cax = ax.imshow(conditional_prob, cmap='Blues')  # Use the i-th conditional probability matrix
         ax.set_xticks(np.arange(len(labels)))
         ax.set_yticks(np.arange(len(labels)))
@@ -103,15 +103,16 @@ def plot_cond_prob(suffix, config, save=False):
         ax.set_xlabel(f'Guesser #{guesser_idx}')
         ax.set_ylabel(f'Hinter #{hinter_idx}')
         # ax.set_title(f'Subplot {i}')  # Or you can put any title you want
-
+        print(rewards, conditional_prob)
     # Create an axis for the colorbar
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # This adds an axis for the colorbar
     fig.colorbar(cax, cax=cbar_ax)
     fig.suptitle(f'Conditional Probability of model {suffix}') 
     # plt.tight_layout(rect=[0, 0, 0.9, 1])  # Adjust the rect to not overlap with the colorbar
+    
+    plt.show()
     if save:
         plt.savefig(f"results/{suffix}/cond_prob")
-    plt.show()
 
 def plot_xp(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)

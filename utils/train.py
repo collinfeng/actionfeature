@@ -8,7 +8,7 @@ import os
 from models.SA2I import *
 from environments.hintguess import *
 from utils.utils import *
-from utils.eval import *
+from utils.evaluations import *
 
 
 def train_agents(config, cp_suffix):
@@ -27,7 +27,7 @@ def train_agents(config, cp_suffix):
             def loss_fn(h_params, g_params, rng, eps):
 
                 rng, subrng = jax.random.split(rng)
-                tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation_test(subrng)
+                tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
 
                 q_values_h = t_state_h.apply_fn({"params": h_params}, tgt_twohot, H2_twohot, H1_twohot)
 
@@ -157,10 +157,10 @@ def train_agents(config, cp_suffix):
     
     # save result
     if config["save_result"] == True:
-        save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}-{cp_suffix}/hinter", num_agents)
-        save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}-{cp_suffix}/guesser", num_agents)
-        if not os.path.isdir("results/{currentDate}-{cp_suffix}"):
-            os.mkdir(f"results/{currentDate}-{cp_suffix}")
-        save_jax_array(sp_train_scores, f"results/{currentDate}-{cp_suffix}", "sp_train_scores")
-        save_jax_array(xp_train_scores, f"results/{currentDate}-{cp_suffix}", "xp_train_scores")
+        save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{cp_suffix}/hinter", num_agents)
+        save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{cp_suffix}/guesser", num_agents)
+        if not os.path.isdir("results/{currentDate}/{cp_suffix}"):
+            os.mkdir(f"results/{currentDate}/{cp_suffix}")
+        save_jax_array(sp_train_scores, f"results/{currentDate}/{cp_suffix}", "sp_train_scores")
+        save_jax_array(xp_train_scores, f"results/{currentDate}/{cp_suffix}", "xp_train_scores")
     
