@@ -214,3 +214,46 @@ def model_test():
     q_values = t_state.apply_fn({"params": t_state.params}, init_sp, init_h1, init_h2)
     print(q_values.shape)
 
+
+class SA2I2MLP(nn.Module):
+    hidden: int
+    num_heads: int
+    batch_size: int
+    emb_dim: int
+    N: int
+    qkv_features: int
+    out_features: int
+
+    def setup(self):
+        self.fc1 = nn.Dense(self.hidden)
+        self.fc2 = nn.Dense(self.hidden)
+        self.fc3 = nn.Dense(1)
+        self.SA2IAttn = single_head_SA2IAttn(qkv_features=self.qkv_features, batch_size=self.batch_size, seq_len=(2 * self.N + 2))
+
+    def observation_shaping(self, sp, h1, h2):
+        sp = jnp.concatenate((jnp.repeat(jnp.array([0, 0]), self.batch_size).reshape(self.batch_size, 2), sp), axis=-1)
+        h1 = jnp.concatenate((jnp.repeat(jnp.array([0, 0]), self.batch_size * self.N).reshape(self.batch_size, self.N, 2), h1), axis=-1)
+        h2 = jnp.concatenate((jnp.repeat(jnp.array([0, 1]), self.batch_size * self.N).reshape(self.batch_size, self.N, 2), h2), axis=-1)
+        result = jnp.concatenate((h1, h2, sp[:, jnp.newaxis, :]), axis=1)
+        return result
+
+    def actions_shaping(self, h2):
+        return jnp.concatenate((jnp.repeat(jnp.array([1, 1]), self.batch_size * self.N).reshape(self.batch_size, self.N, 2), h2), axis=-1)
+
+    def __call__(self, sp, h1, h2):
+        def forward_pass(observation, action):
+            x = jnp.concatenate((observation, action[:, jnp.newaxis, :]), axis=1)
+            x = self.SA2IAttn(x)
+            x = jnp.mean(x, axis=1)
+            x = self.fc1(x)
+            x = nn.relu(x)
+            # x = self.fc2(x)
+            # x = nn.relu(x)
+            x = self.fc3(x)
+            return x
+        
+        vmap_forward_pass = jax.vmap(forward_pass, in_axes=(None, 1), out_axes=1)
+        observation = self.observation_shaping(sp, h1, h2)
+        actions = self.actions_shaping(h2)
+        q_values = vmap_forward_pass(observation, actions)
+        return q_values.reshape(self.batch_size, -1)

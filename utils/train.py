@@ -163,4 +163,6 @@ def train_agents(config, cp_suffix):
             os.makedirs(f"results/{currentDate}/{cp_suffix}")
         save_jax_array(sp_train_scores, f"results/{currentDate}/{cp_suffix}", "sp_train_scores")
         save_jax_array(xp_train_scores, f"results/{currentDate}/{cp_suffix}", "xp_train_scores")
+        plot_sp_xp_result(f"{currentDate}/{cp_suffix}", config, save=True, agent=0)
+        plot_cond_prob(f"{currentDate}/{cp_suffix}", config, save=True)
     

@@ -48,9 +48,9 @@ def plot_sp_xp_result(suffix, config, save=False, agent=0):
     plt.plot(sp[agent], label = "sp reward")
     plt.plot(scaled_iterations, xp, label = "xp reward")
     plt.legend() 
-    plt.show()
     if save:
         plt.savefig(f"results/{suffix}/sp-xp-result.png")
+    plt.show()
 
 def init_model(config):
     model = config["model"]
@@ -103,16 +103,15 @@ def plot_cond_prob(suffix, config, save=False):
         ax.set_xlabel(f'Guesser #{guesser_idx}')
         ax.set_ylabel(f'Hinter #{hinter_idx}')
         # ax.set_title(f'Subplot {i}')  # Or you can put any title you want
-        print(rewards, conditional_prob)
+        # print(rewards, conditional_prob)
     # Create an axis for the colorbar
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # This adds an axis for the colorbar
     fig.colorbar(cax, cax=cbar_ax)
     fig.suptitle(f'Conditional Probability of model {suffix}') 
     # plt.tight_layout(rect=[0, 0, 0.9, 1])  # Adjust the rect to not overlap with the colorbar
-    
-    plt.show()
     if save:
         plt.savefig(f"results/{suffix}/cond_prob")
+    plt.show()
 
 def plot_xp(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
@@ -139,7 +138,7 @@ def plot_xp(suffix, config, save=False):
     fig.suptitle(f'xp averaged: {xp_result.mean()}') 
     plt.tight_layout()
     if save:
-        plt.savefig(f"results/{suffix}/cond_prob")
+        plt.savefig(f"results/{suffix}/cond_prob.png")
     plt.show()
 
 

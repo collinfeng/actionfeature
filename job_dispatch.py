@@ -7,15 +7,13 @@ from datetime import datetime
 
 
 if __name__ == "__main__":
-    currentDate = datetime.now().strftime("%Y-%m-%d")
-    currentTime = datetime.now().strftime("%H:%M:%S")
     config = {
-	"model": SA2I4C,
+	"model": SA2I2MLP,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
-    "emb_dim":10,
-    "qkv_features":10,
-    "out_features":10,
+    "emb_dim":8,
+    "qkv_features":8,
+    "out_features":8,
     "num_episodes": 1000000,
     "mlp_hidden": 128,
     "batch_size": 500,
@@ -29,7 +27,7 @@ if __name__ == "__main__":
     "batched_eval_runs":10,
     "eps_min":0.01,
     "eps_max":0.95,
-    "K":5000,
+    "K":50000,
     "eval_interval":1000,
     "save_result": True,
     "xpeval_print": False,
@@ -37,7 +35,7 @@ if __name__ == "__main__":
     }
 
 
-    cp_suffix = "SA2I-3MLP-Q4C"
+    cp_suffix = "SA2I-2MLP-Q"
     train_agents(config, cp_suffix)
     # model_test()
     
