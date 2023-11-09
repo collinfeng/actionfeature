@@ -28,7 +28,6 @@ def train_agents(config, cp_suffix):
 
                 rng, subrng = jax.random.split(rng)
                 tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
-
                 q_values_h = t_state_h.apply_fn({"params": h_params}, tgt_twohot, H2_twohot, H1_twohot)
 
                 rng, subrng = jax.random.split(rng)
@@ -101,8 +100,7 @@ def train_agents(config, cp_suffix):
     init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
     train_rng = jax.random.PRNGKey(config["train_rng"])
     init_rng = jax.random.PRNGKey(config["init_rng"])
-    
-    
+
     eps_min = config["eps_min"]
     eps_max = config["eps_max"]
     K = config["K"]
