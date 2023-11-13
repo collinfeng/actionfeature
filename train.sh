@@ -1,0 +1,1 @@
+docker run --rm --name collin-runtime -v $(pwd):/home/ActionFeature -w /home/ActionFeature -u $(id -u):$(id -g) -d -it --gpus "device=5" cf-actionfeature python3 main.py

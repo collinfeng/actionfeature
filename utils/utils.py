@@ -10,13 +10,17 @@ from models.SA2I import *
 from utils.evaluations import *
 
 
-def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None):
+def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None, dropout_rng=None):
     optim = optax.adam(lr)
     if params != None:
         return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
     else:
-        params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
-        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+        if dropout_rng is None:
+            params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
+            return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+        else:
+            params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2)["params"]
+            return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
 
 
 def save_pytree(pytree, path):
