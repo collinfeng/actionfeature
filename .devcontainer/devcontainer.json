@@ -6,7 +6,7 @@
         "ms-toolsai.jupyter"
     ],
     "runArgs": [
-        "--gpus", "device=5"
+        "--gpus", "device=3"
     ],
     "settings": { 
         "terminal.integrated.shell.linux": "/bin/bash"

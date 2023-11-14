@@ -26,7 +26,7 @@ if __name__ == "__main__":
     "dropout_rng": 789,
     "eval_rng": 432,
     "num_heads": 1,
-    "eval_runs":10,
+    "eval_runs":100,
     "batched_eval_runs":10,
     "eps_min":0.01,
     "eps_max":0.95,
@@ -37,23 +37,24 @@ if __name__ == "__main__":
     "dropout":0.1
     }
 
-    batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores = train_agents_dropout(config)
+    # batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores = train_agents_dropout(config)
     
     model_name = "attn3"
     currentDate = datetime.now().strftime("%Y-%m-%d")
     
-    # save result
-    if config["save_result"] == True:
-        save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/hinter", config["num_agents"])
-        save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/guesser", config["num_agents"])
-        if not os.path.isdir("results/{currentDate}/{model_name}"):
-            os.makedirs(f"results/{currentDate}/{model_name}")
-        save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
-        save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
-        plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
-        plot_cond_prob(f"{currentDate}/{model_name}", config, save=True)
-        with open('config.json', 'w') as fp:
-            json.dump(config, fp)
+    # # save result
+    # if config["save_result"] == True:
+    #     save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/hinter", config["num_agents"])
+    #     save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/guesser", config["num_agents"])
+    #     if not os.path.isdir("results/{currentDate}/{model_name}"):
+    #         os.makedirs(f"results/{currentDate}/{model_name}")
+    #     save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
+    #     save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
+    
+    plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
+    plot_cond_prob(f"{currentDate}/{model_name}", config, save=True)
+    # with open(f'results/{currentDate}/{model_name}/config.json', 'w') as fp:
+    #     json.dump(config, fp)
     
 
 

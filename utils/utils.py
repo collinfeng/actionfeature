@@ -72,9 +72,8 @@ def init_model(config):
                     emb_dim=config["emb_dim"],
                     N=config["N"],
                     qkv_features=config["qkv_features"],
-                    out_features=config["out_features"])
-            
-            
+                    out_features=config["out_features"],
+                    drop_out=config["dropout"])
             
     guesser = model(hidden=config["mlp_hidden"],
                     num_heads=config["num_heads"],
@@ -82,7 +81,8 @@ def init_model(config):
                     emb_dim=config["emb_dim"],
                     N=config["N"],
                     qkv_features=config["qkv_features"],
-                    out_features=config["out_features"])
+                    out_features=config["out_features"],
+                    drop_out=config["dropout"])
     
     return init_sp, init_h1, init_h2, hinter, guesser
 
@@ -99,8 +99,8 @@ def plot_cond_prob(suffix, config, save=False):
         h_tree = load_trainstate(f"checkpoints/{suffix}/hinter_{hinter_idx}")
         g_tree = load_trainstate(f"checkpoints/{suffix}/guesser_{guesser_idx}")
 
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"])
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"] )
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"], dropout_rng=init_rng)
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"], dropout_rng=init_rng )
         
         rewards, conditional_prob = play_eval(t_state_h, t_state_g, init_rng, config)
         cax = ax.imshow(conditional_prob, cmap='Blues')  # Use the i-th conditional probability matrix
