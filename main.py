@@ -20,7 +20,7 @@ if __name__ == "__main__":
     "mlp_hidden": 128,
     "batch_size": 500,
     "learning_rate": 0.0001,
-    "num_agents": 1,
+    "num_agents": 12,
     "init_rng": 123,
     "train_rng": 456,
     "dropout_rng": 789,
