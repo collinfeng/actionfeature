@@ -1,12 +1,14 @@
 {
-    "name": "Python Project",
+    "name": "cf-actionfeature-re",
     "image": "cf-actionfeature",
     "extensions": [
         "ms-python.python",
         "ms-toolsai.jupyter"
     ],
     "runArgs": [
-        "--gpus", "device=5"
+
+        "--gpus", "device=3"
+
     ],
     "settings": { 
         "terminal.integrated.shell.linux": "/bin/bash"
