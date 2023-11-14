@@ -96,8 +96,6 @@ def xp_eval(agents, config):
             guesser_tx = agents[j][1]
             reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
             xp_result[i, j] = reward
-            if config["xpeval_print"] == True:
-                print(f"Hinter{i}, Guesser{j}, Reward: {reward}")
 
     return xp_result
 
@@ -215,4 +213,5 @@ def batched_xp_eval_drop_out(batch_t_state_h, batch_t_state_g, config):
     batch_t_state_h, batch_t_state_g = tree_node_xp_op(batch_t_state_h, batch_t_state_g)
     vmap_xp_eval = jax.jit(jax.vmap(single_pair_eval))
     xp_scores = vmap_xp_eval(batch_t_state_h, batch_t_state_g)
-    return xp_scores.mean()
+    
+    return xp_scores.reshape(config["num_agents"], config["num_agents"])

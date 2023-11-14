@@ -26,6 +26,13 @@ def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=No
             params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2, training=False)["params"]
             return TrainState.create(apply_fn=model.apply, params=params, key=dropout_rng, tx=optim)
 
+def stack_pytree_in_lst(lst_of_trees):
+
+    def stack_op(first_node, remaining_nodes):
+        batch_node = jnp.stack([first_node, remaining_nodes])
+        return batch_node
+    result = jax.tree_map(stack_op, lst_of_trees[0], lst_of_trees[1:])
+    return result
 
 def save_pytree(pytree, path):
     checkpointer = ocp.PyTreeCheckpointer()
@@ -91,7 +98,7 @@ def plot_cond_prob(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
     init_rng = jax.random.PRNGKey(config["init_rng"])
     labels = [f"{char}{num}" for char in "ABC" for num in range(1, 4)]
-    fig, axs = plt.subplots(1, 6, figsize=(30, 5))  # 1 row, 4 columns, and you can adjust figsize as needed
+    fig, axs = plt.subplots(1, config["num_agents"], figsize=(60, 5))  # 1 row, 4 columns, and you can adjust figsize as needed
 
     for i, ax in enumerate(axs):
         guesser_idx = i
@@ -124,14 +131,23 @@ def plot_cond_prob(suffix, config, save=False):
 def plot_xp(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
     init_rng = jax.random.PRNGKey(config["init_rng"])
-    agents = []
-    for i in range(6):
+    t_state_hs = []
+    t_state_gs = []
+    pairs = []
+    for i in range(config["num_agents"]):
         h_tree = load_trainstate(f"checkpoints/{suffix}/hinter_{i}")
         g_tree = load_trainstate(f"checkpoints/{suffix}/guesser_{i}")
         t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"])
         t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"] )
-        agents.append([t_state_h, t_state_g])
-    xp_result = xp_eval(agents, config)
+        pairs.append([t_state_h, t_state_g])
+        # t_state_hs.append(t_state_h)
+        # t_state_gs.append(t_state_g)
+
+    # batch_t_state_h = stack_pytree_in_lst(t_state_hs)
+    # batch_t_state_g = stack_pytree_in_lst(t_state_gs)
+    # xp_result = batched_xp_eval_drop_out(batch_t_state_h, batch_t_state_g, config)
+
+    xp_result = xp_eval(pairs, config)
 
     labels = [f"Agent {i}" for i in range(1, config["num_agents"]+1)]
     fig, ax = plt.subplots()
@@ -146,8 +162,7 @@ def plot_xp(suffix, config, save=False):
     fig.suptitle(f'xp averaged: {xp_result.mean()}') 
     plt.tight_layout()
     if save:
-        plt.savefig(f"results/{suffix}/cond_prob.png")
+        plt.savefig(f"results/{suffix}/xp_result.png")
     plt.show()
 
 
- 

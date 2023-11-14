@@ -26,14 +26,13 @@ if __name__ == "__main__":
     "dropout_rng": 789,
     "eval_rng": 432,
     "num_heads": 1,
-    "eval_runs":100,
+    "eval_runs":20,
     "batched_eval_runs":10,
     "eps_min":0.01,
     "eps_max":0.95,
     "K":25000,
     "eval_interval":10000,
     "save_result": True,
-    "xpeval_print": False,
     "dropout":0.1
     }
 
@@ -51,8 +50,9 @@ if __name__ == "__main__":
     #     save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
     #     save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
     
-    plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
+    # plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
     plot_cond_prob(f"{currentDate}/{model_name}", config, save=True)
+    # plot_xp(f"{currentDate}/{model_name}", config, save=True)
     # with open(f'results/{currentDate}/{model_name}/config.json', 'w') as fp:
     #     json.dump(config, fp)
     
