@@ -10,7 +10,7 @@ import json
 
 if __name__ == "__main__":
     config = {
-	"model": MLP,
+	"model": AttnModel3,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
     "emb_dim":6,
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     "num_episodes": 500000,
     "mlp_hidden": 128,
     "batch_size": 500,
-    "learning_rate": 0.1,
+    "learning_rate": 0.0001,
     "num_agents": 1,
     "init_rng": 123,
     "train_rng": 456,
@@ -34,10 +34,10 @@ if __name__ == "__main__":
     "eval_interval":10000,
     "save_result": True,
     "xpeval_print": False,
-    "dropout":None
+    "dropout":0.1
     }
 
-    batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores = train_agents(config)
+    batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores = train_agents_dropout(config)
     
     model_name = "attn3"
     currentDate = datetime.now().strftime("%Y-%m-%d")

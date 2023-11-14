@@ -7,7 +7,7 @@ from jax.nn import initializers
 
 from utils.utils import create_train_state
 
-class MLP(nn.Module):
+class MLPModel(nn.Module):
     hidden: int
     num_heads: int
     batch_size: int
@@ -15,13 +15,13 @@ class MLP(nn.Module):
     N: int
     qkv_features: int
     out_features: int
-    # drop_out: float
+    drop_out: float
     
     def setup(self):
-        # self.drop_out_1 = nn.Dropout(rate=self.drop_out)
-        self.fc1 = nn.Dense(128)
-        self.fc2 = nn.Dense(128)
-        self.fc3 = nn.Dense(1)
+        self.drop_out_1 = nn.Dropout(rate=self.drop_out)
+        self.fc1 = nn.Dense(500)
+        self.fc2 = nn.Dense(500)
+        self.fc3 = nn.Dense(4)
 
     def observation_shaping(self, sp, h1, h2):
         obs = jnp.concatenate((h1, h2, sp[:, jnp.newaxis, :]), axis=1)
@@ -94,12 +94,12 @@ class AttnModel3(nn.Module):
     N: int
     qkv_features: int
     out_features: int
-    drop_out: float = 0.1
+    drop_out: float
 
     def setup(self):
         # remarks: any definition without using nn will not be trained
         self.attn = Attn3(self.N * 2 + 2, self.qkv_features, self.drop_out)
-        self.linear = nn.Dense(self.hidden)
+        self.linear = nn.Dense(1)
         
 
     def observation_shaping(self, sp, h1, h2):
@@ -125,8 +125,8 @@ class AttnModel3(nn.Module):
         obs = self.observation_shaping(sp, h1, h2)
         obs = obs.transpose((0, 2, 1))
         h2 = h2.transpose((0, 2, 1))
-        forward_pass_v = jax.vmap(self.forward_pass, in_axes=(None, 2), out_axes=1)
-        q_values = forward_pass_v(obs, h2).reshape(self.batch_size, -1)
+        forward_pass_v = jax.vmap(self.forward_pass, in_axes=(None, -1), out_axes=1)
+        q_values = forward_pass_v(obs, h2).reshape(self.batch_size, self.N)
         return q_values
         
 
