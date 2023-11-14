@@ -7,6 +7,36 @@ from jax.nn import initializers
 
 from utils.utils import create_train_state
 
+class MLP(nn.Module):
+    hidden: int
+    num_heads: int
+    batch_size: int
+    emb_dim: int
+    N: int
+    qkv_features: int
+    out_features: int
+    # drop_out: float
+    
+    def setup(self):
+        # self.drop_out_1 = nn.Dropout(rate=self.drop_out)
+        self.fc1 = nn.Dense(128)
+        self.fc2 = nn.Dense(128)
+        self.fc3 = nn.Dense(1)
+
+    def observation_shaping(self, sp, h1, h2):
+        obs = jnp.concatenate((h1, h2, sp[:, jnp.newaxis, :]), axis=1)
+        return obs
+
+    def __call__(self, sp, h1, h2, training=False):
+        x = self.observation_shaping(sp, h1, h2)
+        x = x.reshape(self.batch_size, -1)
+        x = self.fc1(x)
+        x = nn.relu(x)
+        x = self.fc2(x)
+        x = nn.relu(x)
+        x = self.fc3(x)
+        return x
+
 
 class Norm(nn.Module):
     seq_len: int
@@ -41,7 +71,7 @@ class Attn3(nn.Module):
         self.drop_out_1 = nn.Dropout(rate=self.drop_out)
         self.drop_out_2 = nn.Dropout(rate=self.drop_out)
 
-    def __call__(self, x, training=True):
+    def __call__(self, x, training=False):
         '''
         x: batch, features, cards
         '''
@@ -70,6 +100,7 @@ class AttnModel3(nn.Module):
         # remarks: any definition without using nn will not be trained
         self.attn = Attn3(self.N * 2 + 2, self.qkv_features, self.drop_out)
         self.linear = nn.Dense(self.hidden)
+        
 
     def observation_shaping(self, sp, h1, h2):
         obs = jnp.concatenate((h1, h2, sp[:, jnp.newaxis, :]), axis=1)
@@ -82,7 +113,7 @@ class AttnModel3(nn.Module):
             x = self.linear(x)
             return x
 
-    def __call__(self, sp, h1, h2, training=True):
+    def __call__(self, sp, h1, h2, training=False):
         '''
         h1, h2: batch, cards, features
         sp: batch, features
@@ -146,7 +177,8 @@ class A2I(nn.Module):
         def forward_pass(observation, action):
             x = jnp.concatenate((observation, action[:, jnp.newaxis, :]), axis=1)
             x = self.attn(x)
-            x = jnp.mean(x, axis=1)
+            # x = jnp.mean(x, axis=1)
+            x = x.reshape(self.batch_size, -1)
             x = self.fc1(x)
             x = nn.relu(x)
             x = self.fc2(x)

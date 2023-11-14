@@ -8,6 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from models.SA2I import *
 from utils.evaluations import *
+from flax.training import train_state
+
+class TrainState(train_state.TrainState):
+  key: jax.Array
 
 
 def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None, dropout_rng=None):
@@ -15,12 +19,12 @@ def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=No
     if params != None:
         return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
     else:
-        if dropout_rng is None:
+        if dropout_rng == None:
             params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
             return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
         else:
-            params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2)["params"]
-            return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+            params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2, training=False)["params"]
+            return TrainState.create(apply_fn=model.apply, params=params, key=dropout_rng, tx=optim)
 
 
 def save_pytree(pytree, path):
