@@ -10,7 +10,7 @@ import json
 
 if __name__ == "__main__":
     config = {
-	"model": AttnModel3,
+    "model": AttnModel3,
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
     "emb_dim":6,
