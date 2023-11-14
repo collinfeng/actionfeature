@@ -149,6 +149,8 @@ def train_agents(config, cp_suffix):
         batch_t_state_h, batch_t_state_g, batch_interval_reward = jitted_batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
         batch_rewards[:, eval_idx, :] = batch_interval_reward
         xp_scores[eval_idx] = batched_xp_eval(batch_t_state_h, batch_t_state_g, config).mean()
+        print(f"Episode: {(1 + eval_idx) * eval_interval} sp_train_scores: {batch_interval_reward.mean()}, xp_train_scores: {xp_scores[eval_idx]}")
+
 
     xp_train_scores = xp_scores.reshape(-1)
     sp_train_scores = batch_rewards.reshape(num_agents, -1)
