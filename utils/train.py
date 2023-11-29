@@ -5,7 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 import os
 
-from models.SA2I import *
+from models.hg_models import *
 from environments.hintguess import *
 from utils.utils import *
 from utils.evaluations import *
@@ -235,48 +235,23 @@ def train_agents(config):
     Current function: train_agents(config, cp_suffix):
     Declare static variables
     '''
+    hg_env = HintGuessEnv(config)
     num_agents = config["num_agents"]
     batch_size = config["batch_size"]
     num_episodes = config["num_episodes"]
-    N = config["N"]
-    hg_env = HintGuessEnv(config)
-    model = config["model"]
-    currentDate = datetime.now().strftime("%Y-%m-%d")
-    init_sp = jnp.zeros((config["batch_size"], 2 * config["feature_dim"]), jnp.float32)
-    init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
-    init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
     train_rng = jax.random.PRNGKey(config["train_rng"])
     init_rng = jax.random.PRNGKey(config["init_rng"])
-
     eps_min = config["eps_min"]
     eps_max = config["eps_max"]
     K = config["K"]
     eval_interval = config["eval_interval"]
 
-    hinter = model(hidden=config["mlp_hidden"],
-                 num_heads=config["num_heads"],
-                 batch_size=config["batch_size"],
-                 emb_dim=config["emb_dim"],
-                 N=config["N"],
-                 qkv_features=config["qkv_features"],
-                 out_features=config["out_features"])
-        
-    guesser = model(hidden=config["mlp_hidden"],
-                    num_heads=config["num_heads"],
-                    batch_size=config["batch_size"],
-                    emb_dim=config["emb_dim"],
-                    N=config["N"],
-                    qkv_features=config["qkv_features"],
-                    out_features=config["out_features"])
+    init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
 
-    # batched training setup
-    # setup rngs and eps
-    num_evals = num_episodes // eval_interval
-    train_rngs = jax.random.split(train_rng, num_episodes * num_agents).reshape(num_evals, num_agents, -1, 2)
+    train_rngs = jax.random.split(train_rng, num_episodes * num_agents).reshape(num_agents, -1, 2)
     init_rngs = jax.random.split(init_rng, num_agents)
     n = jnp.arange(num_episodes)
     eps = eps_min + (eps_max - eps_min) * jnp.exp(-n/K)
-    eps = eps.reshape(num_evals, -1)
    
     # init batched train_state
     batch_init = jax.jit(jax.vmap(init_train_states, in_axes=(0,)))
@@ -287,19 +262,11 @@ def train_agents(config):
     jitted_batch_train = jax.jit(batch_train)
 
     # logging
-    batch_rewards = np.zeros((num_agents, num_evals, eval_interval))
-    xp_scores = np.zeros(num_evals)
+    batch_rewards = np.zeros((num_agents, eval_interval))
+    batch_t_state_h, batch_t_state_g, batch_reward = jitted_batch_train(train_rngs, batch_t_state_h, batch_t_state_g, eps)
     
-    for eval_idx in range(num_evals):
-        batch_interval_train_rngs = train_rngs[eval_idx, :, :, :]
-        interval_eps = eps[eval_idx, :]
-        batch_t_state_h, batch_t_state_g, batch_interval_reward = jitted_batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
-        batch_rewards[:, eval_idx, :] = batch_interval_reward
-        xp_scores[eval_idx] = batched_xp_eval(batch_t_state_h, batch_t_state_g, config).mean()
-        print(f"Episode: {(1 + eval_idx) * eval_interval} sp_train_scores: {batch_interval_reward.mean()}, xp_train_scores: {xp_scores[eval_idx]}")
 
-
-    xp_train_scores = xp_scores.reshape(-1)
+    xp_train_scores = np.zeros()
     sp_train_scores = batch_rewards.reshape(num_agents, -1)
     
     return batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores

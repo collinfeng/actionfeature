@@ -5,7 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 from flax.training import train_state, checkpoints
 
-from models.SA2I import *
+from models.debug_models import *
 from environments.hintguess import *
 from utils.utils import *
 from utils.evaluations import *

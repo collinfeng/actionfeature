@@ -6,25 +6,12 @@ import orbax.checkpoint as ocp
 from tempfile import TemporaryFile
 import numpy as np
 import matplotlib.pyplot as plt
-from models.SA2I import *
+from models.hg_models import *
 from utils.evaluations import *
 from flax.training import train_state
 
 class TrainState(train_state.TrainState):
   key: jax.Array
-
-
-def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None, dropout_rng=None):
-    optim = optax.adam(lr)
-    if params != None:
-        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
-    else:
-        if dropout_rng == None:
-            params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
-            return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
-        else:
-            params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2, training=False)["params"]
-            return TrainState.create(apply_fn=model.apply, params=params, key=dropout_rng, tx=optim)
 
 def stack_pytree_in_lst(lst_of_trees):
 
@@ -73,25 +60,45 @@ def init_model(config):
     init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
     init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
 
-    hinter = model(hidden=config["mlp_hidden"],
-                    num_heads=config["num_heads"],
-                    batch_size=config["batch_size"],
-                    emb_dim=config["emb_dim"],
-                    N=config["N"],
-                    qkv_features=config["qkv_features"],
-                    out_features=config["out_features"],
-                    drop_out=config["dropout"])
-            
-    guesser = model(hidden=config["mlp_hidden"],
-                    num_heads=config["num_heads"],
-                    batch_size=config["batch_size"],
-                    emb_dim=config["emb_dim"],
-                    N=config["N"],
-                    qkv_features=config["qkv_features"],
-                    out_features=config["out_features"],
-                    drop_out=config["dropout"])
-    
+    if config["model_type"] == "no_action":  
+        hinter = model(hidden=config["mlp_hidden"],
+                        batch_size=config["batch_size"])
+        guesser = model(hidden=config["mlp_hidden"],
+                        batch_size=config["batch_size"]) 
+    elif config["model_type"] == "action_in":
+        hinter = model(hidden=config["mlp_hidden"],
+                        num_heads=config["num_heads"],
+                        batch_size=config["batch_size"],
+                        emb_dim=config["emb_dim"],
+                        N=config["N"],
+                        qkv_features=config["qkv_features"],
+                        out_features=config["out_features"],
+                        drop_out=config["dropout"])
+                
+        guesser = model(hidden=config["mlp_hidden"],
+                        num_heads=config["num_heads"],
+                        batch_size=config["batch_size"],
+                        emb_dim=config["emb_dim"],
+                        N=config["N"],
+                        qkv_features=config["qkv_features"],
+                        out_features=config["out_features"],
+                        drop_out=config["dropout"])
+    else:
+        raise ValueError('cannot init this -type')
+
     return init_sp, init_h1, init_h2, hinter, guesser
+
+def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None, dropout_rng=None, is_dropout=False):
+    optim = optax.adam(lr)
+    if params != None:
+        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+    else:
+        if not is_dropout:
+            params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
+            return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+        else:
+            params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2, training=False)["params"]
+            return TrainState.create(apply_fn=model.apply, params=params, key=dropout_rng, tx=optim)
 
 
 def plot_cond_prob(suffix, config, save=False):
