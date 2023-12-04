@@ -37,8 +37,8 @@ def teach_agents(config, teachers):
                 # teacher & student hinter provide their estimate to Q values
                 q_values_h_teacher = teacher_hinter.apply_fn({"params": teacher_hinter.params}, tgt_twohot, H2_twohot, H1_twohot)
                 q_values_h = t_state_h.apply_fn({"params": h_params}, tgt_twohot, H2_twohot, H1_twohot, training=False, rngs={'dropout': h_rng})
-                jax.debug.print("{x.shape}, {y.shape}", x=q_values_h, y=q_values_h_teacher)
-                
+
+
                 rngs = jax.random.split(h_rng, batch_size)
                 h_actions = eps_v(config, eps, q_values_h_teacher, rngs)
                 # q_h = jnp.take_along_axis(q_values_h_teacher, h_actions[:, jnp.newaxis], axis=1).squeeze(axis=1)
@@ -56,7 +56,7 @@ def teach_agents(config, teachers):
                 
                 h_loss = jnp.mean((q_values_h - q_values_h_teacher)**2)
                 g_loss = jnp.mean((q_values_g - q_values_g_teacher)**2)
-                jax.debug.print(jnp.mean(rewards))
+                # jax.debug.print("{x}", x=jnp.mean(rewards))
 
                 return h_loss, g_loss, jnp.mean(rewards)
 

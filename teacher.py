@@ -53,7 +53,7 @@ def init_train_states(hinter_teacher, guesser_teacher, init_rng, hinter_teacher_
 	t_state_g = create_train_state(guesser_teacher, init_sp, init_h1, init_h2, init_rng, teacher_config["learning_rate"], ckpt=guesser_teacher_cp, is_dropout=False)
 	return t_state_h, t_state_g
 
-teacher_loading_path = "checkpoints/2023-11-29/mlp"
+teacher_loading_path = "checkpoints/2023-12-04/mlp"
 batched_hinter_teacher_cp = load_trainstate(f"{teacher_loading_path}/batch_hinter")
 batched_guesser_teacher_cp = load_trainstate(f"{teacher_loading_path}/batch_guesser")
 init_sp, init_h1, init_h2, hinter_teacher, guesser_teacher = init_model(teacher_config)
@@ -62,7 +62,6 @@ init_sp, init_h1, init_h2, hinter_teacher, guesser_teacher = init_model(teacher_
 init_rngs = jax.random.split(jax.random.PRNGKey(teacher_config["init_rng"]), teacher_config["num_agents"])
 batched_tx_state_init = jax.vmap(init_train_states, in_axes=(None, None, 0, 0, 0), out_axes=(0, 0))
 batched_teacher_hinter, batched_teacher_guesser = batched_tx_state_init(hinter_teacher, guesser_teacher, init_rngs, batched_hinter_teacher_cp, batched_guesser_teacher_cp)
-
 teachers = (batched_teacher_hinter, batched_teacher_guesser)
 batch_t_state_h, batch_t_state_g, sp_train_scores = teach_agents(attn3_config, teachers)
 
@@ -81,4 +80,3 @@ if attn3_config["save_result"] == True:
 
 plot_sp_xp_result(f"{currentDate}/{model_name}", attn3_config, save=True, agent=0)
 plot_cond_prob(f"{currentDate}/{model_name}", attn3_config, save=attn3_config["save_result"])
-plot_xp(f"{currentDate}/{model_name}", attn3_config, save=attn3_config["save_result"])
