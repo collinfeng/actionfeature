@@ -10,17 +10,18 @@ from utils.utils import create_train_state
 class MLPModel(nn.Module):
     hidden: int
     batch_size: int
+    N: int
     
     def setup(self):
         self.fc1 = nn.Dense(self.hidden)
         self.fc2 = nn.Dense(self.hidden)
-        self.fc3 = nn.Dense(4)
+        self.fc3 = nn.Dense(self.N)
 
     def observation_shaping(self, sp, h1, h2):
         obs = jnp.concatenate((h1, h2, sp[:, jnp.newaxis, :]), axis=1)
         return obs
 
-    def __call__(self, sp, h1, h2, training=False):
+    def __call__(self, sp, h1, h2):
         x = self.observation_shaping(sp, h1, h2)
         x = x.reshape(self.batch_size, -1)
         x = self.fc1(x)

@@ -15,11 +15,8 @@ if __name__ == "__main__":
     "model_type": "action_in", # action_in or no_action
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
-    "emb_dim":6,
     "qkv_features":6,
-    "out_features":6,
     "num_episodes": 500000,
-    "mlp_hidden": 128,
     "batch_size": 500,
     "learning_rate": 0.0001,
     "num_agents": 12,
@@ -78,8 +75,8 @@ if __name__ == "__main__":
         save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
         save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
     
-    # plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
-    # plot_cond_prob(f"{currentDate}/{model_name}", config, save=config["save_result"])
+    plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
+    plot_cond_prob(f"{currentDate}/{model_name}", config, save=config["save_result"])
     # plot_xp(f"{currentDate}/{model_name}", config, save=config["save_result"])
     # with open(f'results/{currentDate}/{model_name}/config.json', 'w') as fp:
     #     fp.write(json.dump(config, fp))

@@ -40,15 +40,19 @@ def play_eval(t_state_h, t_state_g, rng, config):
         rng, subrng = jax.random.split(rng)
         tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
 
-        # q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
-        q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot, training=False, rngs={'dropout': subrng})
+        if config["model_type"] == "no_action":
+            q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot)
+        else:
+            q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot, training=False, rngs={'dropout': subrng})
         rng, subrng = jax.random.split(rng)
         rngs = jax.random.split(subrng, batch_size)
         h_actions = greedy_v(q_values_h)
         q_h = jnp.take_along_axis(q_values_h, h_actions[:, jnp.newaxis], axis=1).squeeze(axis=1)
         hinted_twohot = jnp.take_along_axis(H1_twohot, h_actions[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
-        # q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot)
-        q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot, training=False, rngs={'dropout': subrng})
+        if config["model_type"] == "no_action":
+            q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot)
+        else:
+            q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot, training=False, rngs={'dropout': subrng})
 
         rng, subrng = jax.random.split(rngs[-1])
         rngs = jax.random.split(subrng, batch_size)

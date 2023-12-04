@@ -266,7 +266,7 @@ def train_agents(config):
     batch_t_state_h, batch_t_state_g, batch_reward = jitted_batch_train(train_rngs, batch_t_state_h, batch_t_state_g, eps)
     
 
-    xp_train_scores = np.zeros()
+    xp_train_scores = np.zeros(10)
     sp_train_scores = batch_rewards.reshape(num_agents, -1)
     
     return batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores

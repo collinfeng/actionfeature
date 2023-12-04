@@ -40,15 +40,16 @@ def save_jax_array(ndarray, path="results", filename="untitled.npy"):
     with open(f"{path}/{filename}", 'wb') as f:
         jnp.save(f, ndarray)
 
-def plot_sp_xp_result(suffix, config, save=False, agent=0):
-    eval_interval = config["eval_interval"] 
-    num_episodes = config["num_episodes"]
-    num_evals = num_episodes // eval_interval
-    scaled_iterations = [i * eval_interval for i in range(num_evals)]
+def plot_sp_xp_result(suffix, config, save=False, agent=0, plot_xp=False):
     sp = np.load(f"results/{suffix}/sp_train_scores")
-    xp = np.load(f"results/{suffix}/xp_train_scores")
     plt.plot(sp[agent], label = "sp reward")
-    plt.plot(scaled_iterations, xp, label = "xp reward")
+    if plot_xp:
+        eval_interval = config["eval_interval"] 
+        num_episodes = config["num_episodes"]
+        num_evals = num_episodes // eval_interval
+        scaled_iterations = [i * eval_interval for i in range(num_evals)]
+        xp = np.load(f"results/{suffix}/xp_train_scores")
+        plt.plot(scaled_iterations, xp, label = "xp reward")
     plt.legend() 
     if save:
         plt.savefig(f"results/{suffix}/sp-xp-result.png")
@@ -62,50 +63,45 @@ def init_model(config):
 
     if config["model_type"] == "no_action":  
         hinter = model(hidden=config["mlp_hidden"],
-                        batch_size=config["batch_size"])
-        guesser = model(hidden=config["mlp_hidden"],
-                        batch_size=config["batch_size"]) 
-    elif config["model_type"] == "action_in":
-        hinter = model(hidden=config["mlp_hidden"],
-                        num_heads=config["num_heads"],
                         batch_size=config["batch_size"],
-                        emb_dim=config["emb_dim"],
+                        N = config["N"])
+        guesser = model(hidden=config["mlp_hidden"],
+                        batch_size=config["batch_size"],
+                        N = config["N"]) 
+    elif config["model_type"] == "action_in":
+        hinter = model(batch_size=config["batch_size"],
                         N=config["N"],
                         qkv_features=config["qkv_features"],
-                        out_features=config["out_features"],
                         drop_out=config["dropout"])
                 
-        guesser = model(hidden=config["mlp_hidden"],
-                        num_heads=config["num_heads"],
-                        batch_size=config["batch_size"],
-                        emb_dim=config["emb_dim"],
+        guesser = model(batch_size=config["batch_size"],
                         N=config["N"],
                         qkv_features=config["qkv_features"],
-                        out_features=config["out_features"],
-                        drop_out=config["dropout"])
+                        drop_out=config["dropout"])   
     else:
-        raise ValueError('cannot init this -type')
+        raise ValueError('cannot init this model type')
 
     return init_sp, init_h1, init_h2, hinter, guesser
 
-def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, params=None, dropout_rng=None, is_dropout=False):
+def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, ckpt=None, is_dropout=False):
     optim = optax.adam(lr)
-    if params != None:
-        return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
+    if ckpt != None:
+        optim.init(ckpt["opt_state"])
+        return train_state.TrainState.create(apply_fn=model.apply, params=ckpt["params"], tx=optim)
     else:
         if not is_dropout:
             params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
             return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optim)
         else:
             params = model.init({"params": init_rng, 'dropout': init_rng}, init_sp, init_h1, init_h2, training=False)["params"]
-            return TrainState.create(apply_fn=model.apply, params=params, key=dropout_rng, tx=optim)
+            return TrainState.create(apply_fn=model.apply, params=params, key=init_rng, tx=optim)
 
 
 def plot_cond_prob(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
     init_rng = jax.random.PRNGKey(config["init_rng"])
     labels = [f"{char}{num}" for char in "ABC" for num in range(1, 4)]
-    fig, axs = plt.subplots(1, config["num_agents"], figsize=(60, 5))  # 1 row, 4 columns, and you can adjust figsize as needed
+    fig, axs = plt.subplots(1, config["num_agents"], figsize=(60, 5))  
 
     for i, ax in enumerate(axs):
         guesser_idx = i
