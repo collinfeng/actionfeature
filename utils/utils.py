@@ -11,7 +11,17 @@ from utils.evaluations import *
 from flax.training import train_state
 
 class TrainState(train_state.TrainState):
-  key: jax.Array
+  key: jax.Array = jax.random.PRNGKey(0)
+  @classmethod
+  def load(cls, *, apply_fn, params, tx, opt_state, **kwargs):
+    return cls(
+        step=0,
+        apply_fn=apply_fn,
+        params=params,
+        tx=tx,
+        opt_state=opt_state,
+        **kwargs,
+    )
 
 def stack_pytree_in_lst(lst_of_trees):
 
@@ -86,8 +96,7 @@ def init_model(config):
 def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, ckpt=None, is_dropout=False):
     optim = optax.adam(lr)
     if ckpt != None:
-        optim.init(ckpt["opt_state"])
-        return train_state.TrainState.create(apply_fn=model.apply, params=ckpt["params"], tx=optim)
+        return TrainState.load(apply_fn=model.apply, params=ckpt["params"], tx=optim, opt_state=ckpt["opt_state"])
     else:
         if not is_dropout:
             params = model.init({"params": init_rng}, init_sp, init_h1, init_h2)["params"]
@@ -109,8 +118,8 @@ def plot_cond_prob(suffix, config, save=False):
         h_tree = load_trainstate(f"checkpoints/{suffix}/hinter_{hinter_idx}")
         g_tree = load_trainstate(f"checkpoints/{suffix}/guesser_{guesser_idx}")
 
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"], dropout_rng=init_rng)
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"], dropout_rng=init_rng )
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=h_tree, dropout_rng=init_rng)
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=g_tree, dropout_rng=init_rng)
         
         rewards, conditional_prob = play_eval(t_state_h, t_state_g, init_rng, config)
         cax = ax.imshow(conditional_prob, cmap='Blues')  # Use the i-th conditional probability matrix
@@ -140,8 +149,8 @@ def plot_xp(suffix, config, save=False):
     for i in range(config["num_agents"]):
         h_tree = load_trainstate(f"checkpoints/{suffix}/hinter_{i}")
         g_tree = load_trainstate(f"checkpoints/{suffix}/guesser_{i}")
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=h_tree["params"])
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], params=g_tree["params"] )
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=h_tree)
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=g_tree)
         pairs.append([t_state_h, t_state_g])
         # t_state_hs.append(t_state_h)
         # t_state_gs.append(t_state_g)
