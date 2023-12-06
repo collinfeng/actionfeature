@@ -100,6 +100,7 @@ def xp_eval(agents, config):
             guesser_tx = agents[j][1]
             reward, _ = play_eval(hinter_tx, guesser_tx, subrng, config)
             xp_result[i, j] = reward
+            print(reward)
 
     return xp_result
 
@@ -160,6 +161,84 @@ def batched_xp_eval(batch_t_state_h, batch_t_state_g, config):
     vmap_xp_eval = jax.jit(jax.vmap(single_pair_eval))
     xp_scores = vmap_xp_eval(batch_t_state_h, batch_t_state_g)
     return xp_scores.mean()
+
+def batched_sp_eval_drop_out(batch_t_state_h, batch_t_state_g, config):
+
+    def single_pair_eval(t_state_h, t_state_g):
+        def greedy_policy(q_values):
+            return jnp.argmax(q_values)
+        
+        def index_convertion(twohot_index):
+            '''
+            input: format of (feature_dim)
+            output: format of (idx), idx <- {0, 8} if feature = 3, 1A -> 0, 3C ->8
+            '''
+            # twohot_index = twohot_index - jnp.array([1, 1, 1, 2, 2, 2])
+            pos = jnp.argwhere(twohot_index==1, size=2)
+            idx = (2 - pos[0])*3 + (2 - (pos[1] - 3))
+            return idx
+
+        def eval_step(t_state_h, t_state_g, rng):
+            
+            conditional_dim = config["feature_dim"]**2
+            action_occurrence = jnp.zeros((conditional_dim, conditional_dim), jnp.int32) # use ones for safe division
+            total_occurrence = jnp.zeros((conditional_dim, conditional_dim), jnp.int32)
+
+
+            rng, subrng = jax.random.split(rng)
+            tgt_twohot, H1_twohot, H2_twohot = hg_env.get_observation(subrng)
+
+            q_values_h = t_state_h.apply_fn({"params": t_state_h.params}, tgt_twohot, H2_twohot, H1_twohot, training=False, rngs={'dropout': subrng})
+
+            rng, subrng = jax.random.split(rng)
+            rngs = jax.random.split(subrng, batch_size)
+            h_actions = greedy_v(q_values_h)
+            hinted_twohot = jnp.take_along_axis(H1_twohot, h_actions[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+            q_values_g = t_state_g.apply_fn({"params": t_state_g.params}, hinted_twohot, H1_twohot, H2_twohot, training=False, rngs={'dropout': subrng})
+
+            rng, subrng = jax.random.split(rngs[-1])
+            rngs = jax.random.split(subrng, batch_size)
+            guess = greedy_v(q_values_g)
+            guess_twohot = jnp.take_along_axis(H2_twohot, guess[:, jnp.newaxis, jnp.newaxis], axis=1).squeeze(axis=1)
+            rewards = hg_env.get_reward(tgt_twohot, guess_twohot)
+
+            #counting occurence
+            '''
+            one hint correspond to N cards of a hand
+            one hint correspond to one guess
+            '''
+            flatten_hint = hinted_twohot.reshape(-1, card_dim)
+            hint_column_idx = index_convertion_v(flatten_hint)
+            flatten_hand = H2_twohot.reshape(-1, card_dim)
+            hand_row_idx = index_convertion_v(flatten_hand).flatten()
+            total_occurrence = total_occurrence.at[hand_row_idx, jnp.repeat(hint_column_idx, N)].add(1)
+            flatten_action = guess_twohot.reshape(-1, card_dim)
+            guess_row_idx = index_convertion_v(flatten_action)
+            action_occurrence = action_occurrence.at[guess_row_idx, hint_column_idx].add(1)
+
+            return rewards, action_occurrence/total_occurrence
+        
+        greedy_v = jax.vmap(greedy_policy, in_axes=(0))
+        eval_step_v = jax.vmap(eval_step, in_axes=(None, None, 0))
+        index_convertion_v = jax.vmap(index_convertion)
+
+        N = config["N"]
+        batch_size = config["batch_size"]
+        card_dim = 2 * config["feature_dim"]
+        hg_env = HintGuessEnv(config)
+        eval_rng = jax.random.PRNGKey(config["eval_rng"])
+        eval_rng = jax.random.split(eval_rng, config["batched_eval_runs"])
+        rewards, cond_prob = eval_step_v(t_state_h, t_state_g, eval_rng)
+        
+        
+        return rewards.mean(), jnp.mean(cond_prob, axis=0)
+
+    batch_pair_eval_v = jax.jit(jax.vmap(single_pair_eval, in_axes=(0, 0), out_axes=(0, 0)))
+    batch_reward, batch_cond_prob = batch_pair_eval_v(batch_t_state_h, batch_t_state_g)
+
+    return batch_reward, batch_cond_prob
+
+
 
 def batched_xp_eval_drop_out(batch_t_state_h, batch_t_state_g, config):
     # jitted later after vmapped

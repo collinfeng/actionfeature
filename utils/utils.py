@@ -106,7 +106,7 @@ def create_train_state(model, init_sp, init_h1, init_h2, init_rng, lr, ckpt=None
             return TrainState.create(apply_fn=model.apply, params=params, key=init_rng, tx=optim)
 
 
-def plot_cond_prob(suffix, config, save=False):
+def plot_cond_prob_from_ckpt(suffix, config, save=False):
     init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
     init_rng = jax.random.PRNGKey(config["init_rng"])
     labels = [f"{char}{num}" for char in "ABC" for num in range(1, 4)]
@@ -118,8 +118,8 @@ def plot_cond_prob(suffix, config, save=False):
         h_tree = load_trainstate(f"checkpoints/{suffix}/hinter_{hinter_idx}")
         g_tree = load_trainstate(f"checkpoints/{suffix}/guesser_{guesser_idx}")
 
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=h_tree, dropout_rng=init_rng)
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=g_tree, dropout_rng=init_rng)
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=h_tree)
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], ckpt=g_tree)
         
         rewards, conditional_prob = play_eval(t_state_h, t_state_g, init_rng, config)
         cax = ax.imshow(conditional_prob, cmap='Blues')  # Use the i-th conditional probability matrix
@@ -178,3 +178,24 @@ def plot_xp(suffix, config, save=False):
     plt.show()
 
 
+def plot_cond_prob_from_array(batched_cond_prob, suffix, config, ep):
+
+    labels = [f"{char}{num}" for char in "ABC" for num in range(1, 4)]
+    fig, axs = plt.subplots(1, config["num_agents"], figsize=(60, 5))
+    for i, ax in enumerate(axs):
+        cax = ax.imshow(batched_cond_prob[i, ...], cmap='Blues')  # Use the i-th conditional probability matrix
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_yticks(np.arange(len(labels)))
+        ax.set_xticklabels(labels)
+        ax.set_yticklabels(labels)
+        ax.set_xlabel(f'Guesser #{i}')
+        ax.set_ylabel(f'Hinter #{i}')
+        # ax.set_title(f'Subplot {i}')  # Or you can put any title you want
+        # print(rewards, conditional_prob)
+    # Create an axis for the colorbar
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # This adds an axis for the colorbar
+    fig.colorbar(cax, cax=cbar_ax)
+    fig.suptitle(f'Conditional Probability of model {suffix}') 
+    # plt.tight_layout(rect=[0, 0, 0.9, 1])  # Adjust the rect to not overlap with the colorbar
+    plt.savefig(f"results/{suffix}/cond_prob_ep{ep}")
+    plt.show()

@@ -63,20 +63,21 @@ init_rngs = jax.random.split(jax.random.PRNGKey(teacher_config["init_rng"]), tea
 batched_tx_state_init = jax.vmap(init_train_states, in_axes=(None, None, 0, 0, 0), out_axes=(0, 0))
 batched_teacher_hinter, batched_teacher_guesser = batched_tx_state_init(hinter_teacher, guesser_teacher, init_rngs, batched_hinter_teacher_cp, batched_guesser_teacher_cp)
 teachers = (batched_teacher_hinter, batched_teacher_guesser)
-batch_t_state_h, batch_t_state_g, sp_train_scores = teach_agents(attn3_config, teachers)
+# batch_t_state_h, batch_t_state_g, sp_train_scores = teach_agents(attn3_config, teachers)
 
 model_name = "attn3-teach"
 currentDate = datetime.now().strftime("%Y-%m-%d")
 
-if attn3_config["save_result"] == True:
-	save_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/batch_hinter")
-	save_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/batch_guesser")
-	save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/hinter", attn3_config["num_agents"])
-	save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/guesser", attn3_config["num_agents"])
-	if not os.path.isdir("results/{currentDate}/{model_name}"):
-		os.makedirs(f"results/{currentDate}/{model_name}")
-	save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
+# if attn3_config["save_result"] == True:
+# 	save_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/batch_hinter")
+# 	save_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/batch_guesser")
+# 	save_batched_pytree(batch_t_state_h, f"checkpoints/{currentDate}/{model_name}/hinter", attn3_config["num_agents"])
+# 	save_batched_pytree(batch_t_state_g, f"checkpoints/{currentDate}/{model_name}/guesser", attn3_config["num_agents"])
+# 	if not os.path.isdir("results/{currentDate}/{model_name}"):
+# 		os.makedirs(f"results/{currentDate}/{model_name}")
+# 	save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
 
 
-plot_sp_xp_result(f"{currentDate}/{model_name}", attn3_config, save=True, agent=0)
-plot_cond_prob(f"{currentDate}/{model_name}", attn3_config, save=attn3_config["save_result"])
+# plot_sp_xp_result(f"{currentDate}/{model_name}", attn3_config, save=True, agent=0)
+# plot_cond_prob(f"{currentDate}/{model_name}", attn3_config, save=attn3_config["save_result"])
+plot_xp(f"{currentDate}/{model_name}", attn3_config, save=attn3_config["save_result"])

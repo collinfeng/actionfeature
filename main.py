@@ -16,7 +16,7 @@ if __name__ == "__main__":
     "N": 5,
     "feature_dim": 3, # this the number of classes under different features set, e.g. dim = 3 for 0, 1, 2
     "qkv_features":6,
-    "num_episodes": 500000,
+    "num_episodes": 100000,
     "batch_size": 500,
     "learning_rate": 0.0001,
     "num_agents": 12,
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     "eps_min":0.01,
     "eps_max":0.95,
     "K":25000,
-    "eval_interval":100000,
+    "eval_interval":100,
     "save_result": True,
     "dropout":0.1
     }
@@ -59,10 +59,10 @@ if __name__ == "__main__":
     "save_result": True,
     }
 
-    config = mlp_config
+    config = attn3_config
     train_func = config["train_func"]
-    batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores = train_func(config)
-    model_name = "mlp"
+    batch_t_state_h, batch_t_state_g, sp_train_scores = train_func(config)
+    model_name = "attn3"
     currentDate = datetime.now().strftime("%Y-%m-%d")
     
     if config["save_result"] == True:
@@ -73,10 +73,10 @@ if __name__ == "__main__":
         if not os.path.isdir("results/{currentDate}/{model_name}"):
             os.makedirs(f"results/{currentDate}/{model_name}")
         save_jax_array(sp_train_scores, f"results/{currentDate}/{model_name}", "sp_train_scores")
-        save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
+        # save_jax_array(xp_train_scores, f"results/{currentDate}/{model_name}", "xp_train_scores")
     
-    plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
-    plot_cond_prob(f"{currentDate}/{model_name}", config, save=config["save_result"])
+    # plot_sp_xp_result(f"{currentDate}/{model_name}", config, save=True, agent=0)
+    # plot_cond_prob(f"{currentDate}/{model_name}", config, save=config["save_result"])
     # plot_xp(f"{currentDate}/{model_name}", config, save=config["save_result"])
     # with open(f'results/{currentDate}/{model_name}/config.json', 'w') as fp:
     #     fp.write(json.dump(config, fp))

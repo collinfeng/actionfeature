@@ -80,8 +80,8 @@ def train_agents_dropout(config):
 
     # later vmapped
     def init_train_states(init_rng):
-        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], dropout_rng=init_rng)
-        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], dropout_rng=init_rng)
+        t_state_h = create_train_state(hinter, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], is_dropout=True)
+        t_state_g = create_train_state(guesser, init_sp, init_h1, init_h2, init_rng, config["learning_rate"], is_dropout=True)
         return t_state_h, t_state_g
 
     '''
@@ -95,9 +95,7 @@ def train_agents_dropout(config):
     hg_env = HintGuessEnv(config)
     model = config["model"]
 
-    init_sp = jnp.zeros((config["batch_size"], 2 * config["feature_dim"]), jnp.float32)
-    init_h1 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
-    init_h2 = jnp.zeros((config["batch_size"], config["N"], 2 * config["feature_dim"]), jnp.float32)
+    
     train_rng = jax.random.PRNGKey(config["train_rng"])
     init_rng = jax.random.PRNGKey(config["init_rng"])
 
@@ -105,24 +103,7 @@ def train_agents_dropout(config):
     eps_max = config["eps_max"]
     K = config["K"]
     eval_interval = config["eval_interval"]
-    hinter = model(config["mlp_hidden"],
-                config["num_heads"],
-                config["batch_size"],
-                config["emb_dim"],
-                config["N"],
-                config["qkv_features"],
-                config["out_features"],
-                config["dropout"])
-        
-    guesser = model(config["mlp_hidden"],
-                    config["num_heads"],
-                    config["batch_size"],
-                    config["emb_dim"],
-                    config["N"],
-                    config["qkv_features"],
-                    config["out_features"],
-                    config["dropout"])
-
+    
     # batched training setup
     # setup rngs and eps
     num_evals = num_episodes // eval_interval
@@ -133,6 +114,7 @@ def train_agents_dropout(config):
     eps = eps.reshape(num_evals, -1)
    
     # init batched train_state
+    init_sp, init_h1, init_h2, hinter, guesser = init_model(config)
     batch_init = jax.vmap(init_train_states, in_axes=(0,))
     batch_t_state_h, batch_t_state_g = batch_init(init_rngs) 
 
@@ -142,20 +124,20 @@ def train_agents_dropout(config):
 
     # logging
     batch_rewards = np.zeros((num_agents, num_evals, eval_interval))
-    xp_scores = np.zeros(num_evals)
-    
+    suffix = "2023-12-04/attn3"
+    if not os.path.isdir("results/{suffix}"):
+            os.makedirs(f"results/{suffix}")
     for eval_idx in range(num_evals):
         batch_interval_train_rngs = train_rngs[eval_idx, :, :, :]
         interval_eps = eps[eval_idx, :]
         batch_t_state_h, batch_t_state_g, batch_interval_reward = jitted_batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
         batch_rewards[:, eval_idx, :] = batch_interval_reward
-        xp_scores[eval_idx] = batched_xp_eval_drop_out(batch_t_state_h, batch_t_state_g, config).mean()
-        print(f"Episode: {(1 + eval_idx) * eval_interval} sp_train_scores: {batch_interval_reward.mean()}, xp_train_scores: {xp_scores[eval_idx]}")
+        _, batch_cond_prob = batched_sp_eval_drop_out(batch_t_state_h, batch_t_state_g, config)
+        plot_cond_prob_from_array(batch_cond_prob, suffix, config, eval_idx)
 
-    xp_train_scores = xp_scores.reshape(-1)
     sp_train_scores = batch_rewards.reshape(num_agents, -1)
     
-    return batch_t_state_h, batch_t_state_g, sp_train_scores, xp_train_scores
+    return batch_t_state_h, batch_t_state_g, sp_train_scores
     
 
 def train_agents(config):
