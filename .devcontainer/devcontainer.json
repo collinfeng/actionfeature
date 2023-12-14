@@ -7,7 +7,7 @@
     ],
     "runArgs": [
 
-        "--gpus", "device=5"
+        "--gpus", "device=7"
 
     ],
     "settings": { 

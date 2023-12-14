@@ -124,13 +124,14 @@ def train_agents_dropout(config):
 
     # logging
     batch_rewards = np.zeros((num_agents, num_evals, eval_interval))
-    suffix = "2023-12-04/attn3"
+    suffix = "2023-12-14/attn3-handcraft-2"
     if not os.path.isdir("results/{suffix}"):
-            os.makedirs(f"results/{suffix}")
+        os.makedirs(f"results/{suffix}")
     for eval_idx in range(num_evals):
         batch_interval_train_rngs = train_rngs[eval_idx, :, :, :]
         interval_eps = eps[eval_idx, :]
         batch_t_state_h, batch_t_state_g, batch_interval_reward = jitted_batch_train(batch_interval_train_rngs, batch_t_state_h, batch_t_state_g, interval_eps)
+        print(f"SP-reward: {batch_interval_reward[:4, -1]}")
         batch_rewards[:, eval_idx, :] = batch_interval_reward
         _, batch_cond_prob = batched_sp_eval_drop_out(batch_t_state_h, batch_t_state_g, config)
         plot_cond_prob_from_array(batch_cond_prob, suffix, config, eval_idx)

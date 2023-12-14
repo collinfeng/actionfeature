@@ -68,9 +68,9 @@ def teach_agents(config, teachers):
                 _, g_loss, _ = loss_fn(t_state_h.params, g_params, rng, eps)
                 return g_loss
 
-            def calc_rewards(rng, eps):
-                _, _, rewards = loss_fn(t_state_h.params, t_state_g.params, rng, eps)
-                return rewards
+            def get_losses(rng, eps):
+                h_loss, g_loss, _ = loss_fn(t_state_h.params, t_state_g.params, rng, eps)
+                return h_loss, g_loss
     
             rng, eps = x
             t_state_h, t_state_g = carry
@@ -81,13 +81,13 @@ def teach_agents(config, teachers):
             grad_g_loss_fn = jax.grad(g_loss_fn)
             grad_g = grad_g_loss_fn(t_state_g.params, rng, eps)
             t_state_g = t_state_g.apply_gradients(grads = grad_g)
-            rewards = calc_rewards(rng, eps)
-            return (t_state_h, t_state_g), rewards
+            h_loss, g_loss = get_losses(rng, eps)
+            return (t_state_h, t_state_g), (h_loss, g_loss)
         
         eps_v = jax.vmap(eps_policy, in_axes=(None, None, 0, 0))
-        (t_state_h, t_state_g), rewards = jax.lax.scan(training_step, (t_state_h, t_state_g), (rngs, eps))
+        (t_state_h, t_state_g), (h_losses, g_losses) = jax.lax.scan(training_step, (t_state_h, t_state_g), (rngs, eps))
 
-        return t_state_h, t_state_g, rewards
+        return t_state_h, t_state_g, h_losses, g_losses
 
     # later vmapped
     def init_train_states(hinter, guesser, init_rng):
@@ -129,6 +129,6 @@ def teach_agents(config, teachers):
     
     # train_agents
     hinter_teachers, guesser_teachers = teachers
-    batch_t_state_h, batch_t_state_g, sp_train_scores = jitted_batch_train(train_rngs, batch_t_state_h, batch_t_state_g, hinter_teachers, guesser_teachers, eps)
+    batch_t_state_h, batch_t_state_g, h_losses, g_losses = jitted_batch_train(train_rngs, batch_t_state_h, batch_t_state_g, hinter_teachers, guesser_teachers, eps)
             
-    return batch_t_state_h, batch_t_state_g, sp_train_scores
+    return batch_t_state_h, batch_t_state_g, h_losses, g_losses
